@@ -1,0 +1,48 @@
+{
+  "name": "darklauncher",
+  "productName": "Darklauncher",
+  "version": "1.0.0",
+  "description": "Dark-themed Minecraft launcher",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "test": "node test/smoke.test.js",
+    "preview": "node scripts/build-preview.js",
+    "icons": "node scripts/gen-icons.js",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder"
+  },
+  "author": "Darklauncher contributors",
+  "license": "MIT",
+  "homepage": "https://github.com/darklauncher/darklauncher#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/darklauncher/darklauncher.git"
+  },
+  "bugs": {
+    "url": "https://github.com/darklauncher/darklauncher/issues"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.darklauncher.app",
+    "productName": "Darklauncher",
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": [
+        "nsis",
+        "zip"
+      ],
+      "icon": "build/icon.ico",
+      "artifactName": "Darklauncher-${version}-${arch}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  }
+}

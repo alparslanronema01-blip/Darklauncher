@@ -1,0 +1,2535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  
+  <style>
+/* Darklauncher — dark, sharp, neon-accented UI */
+
+:root {
+  --bg: #0b0d12;
+  --bg-2: #11141b;
+  --panel: #161a23;
+  --panel-2: #1c2130;
+  --border: #262c3d;
+  --text: #e7eaf2;
+  --muted: #8b93a7;
+  --accent: #8b5cf6;
+  --accent-2: #22d3ee;
+  --danger: #f43f5e;
+  --ok: #34d399;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body, #app { height: 100%; }
+
+/* Animated background canvas + full-image layer sit behind everything. */
+#bg-canvas {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+#bg-image {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-size: cover;
+  background-position: center;
+  opacity: 0;
+  transition: opacity 0.6s ease;
+}
+body.has-bg-image #bg-image { opacity: 0.55; }
+#titlebar, #sidebar, .page, .panel { position: relative; z-index: 1; }
+/* Dim sidebar/panels slightly over busy backgrounds for readability. */
+body.has-bg-image #sidebar { background: rgba(17, 20, 27, 0.82); }
+body.has-bg-image .panel { background: rgba(22, 26, 35, 0.86); }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  font-size: 14px;
+  overflow: hidden;
+  user-select: none;
+}
+
+.hidden { display: none !important; }
+.muted { color: var(--muted); }
+.accent { color: var(--accent); }
+
+button { font-family: inherit; cursor: pointer; }
+input, select {
+  font-family: inherit;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 8px 10px;
+  border-radius: 8px;
+  outline: none;
+}
+input:focus { border-color: var(--accent); }
+
+.btn {
+  background: linear-gradient(135deg, var(--accent), #6d28d9);
+  color: white;
+  border: none;
+  padding: 10px 18px;
+  border-radius: 8px;
+  font-weight: 600;
+  transition: filter 0.15s ease, transform 0.05s ease;
+}
+.btn:hover { filter: brightness(1.15); }
+.btn:active { transform: scale(0.97); }
+.btn.accent {
+  background: linear-gradient(135deg, var(--accent-2), #0891b2);
+  box-shadow: 0 0 14px rgba(34, 211, 238, 0.35);
+  white-space: nowrap;
+}
+
+.load-more-wrap {
+  display: flex; align-items: center; gap: 14px;
+  justify-content: center;
+  margin: 14px 0 6px;
+}
+.btn.small { padding: 6px 12px; font-size: 12px; }
+.btn.danger {
+  background: linear-gradient(135deg, var(--danger), #9f1239);
+  box-shadow: 0 4px 16px rgba(244,63,94,0.35);
+}
+#btn-stop { width: 100%; padding: 10px; font-weight: 700; border-radius: 10px; }
+
+/* ---------- Titlebar ---------- */
+#titlebar {
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: linear-gradient(90deg, #0e1017, #131722 60%, #0e1017);
+  border-bottom: 1px solid var(--border);
+  -webkit-app-region: drag;
+  padding-left: 14px;
+}
+.tb-left { display: flex; align-items: center; gap: 10px; }
+.logo-dot {
+  width: 22px; height: 22px;
+  border-radius: 6px;
+  object-fit: cover;
+  box-shadow: 0 0 12px rgba(139, 92, 246, 0.55), 0 0 2px rgba(34, 211, 238, 0.6);
+  image-rendering: auto;
+}
+.tb-title { font-weight: 800; letter-spacing: 2px; font-size: 13px; }
+.tb-right { display: flex; -webkit-app-region: no-drag; }
+.tb-btn {
+  width: 46px; height: 42px;
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  font-size: 13px;
+  transition: background 0.15s, color 0.15s;
+}
+.tb-btn:hover { background: #ffffff14; color: var(--text); }
+.tb-close:hover { background: var(--danger); color: white; }
+
+/* ---------- Layout ---------- */
+#body { display: flex; height: calc(100% - 42px); }
+
+#sidebar {
+  width: 210px;
+  background: var(--bg-2);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  padding: 16px 10px;
+  gap: 6px;
+}
+.nav-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--muted);
+  padding: 11px 14px;
+  border-radius: 10px;
+  font-size: 14px;
+  text-align: left;
+  transition: all 0.15s ease;
+}
+.nav-btn:hover { background: #ffffff08; color: var(--text); }
+.nav-btn.active {
+  background: linear-gradient(90deg, rgba(139,92,246,0.18), transparent);
+  border-color: rgba(139,92,246,0.35);
+  color: var(--text);
+}
+.nav-btn .ico { font-size: 16px; }
+
+.sidebar-footer { margin-top: auto; }
+#account-chip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+#account-chip img { width: 32px; height: 32px; image-rendering: pixelated; border-radius: 6px; }
+.acc-meta { display: flex; flex-direction: column; line-height: 1.3; }
+.acc-meta #account-name { font-weight: 700; font-size: 13px; }
+.acc-meta #account-type { color: var(--muted); font-size: 11px; }
+
+#content { flex: 1; overflow-y: auto; padding: 28px 32px; }
+
+.page { display: none; animation: fadeIn 0.25s ease; }
+.page.active { display: block; }
+#page-home.active { display: block; position: relative; min-height: calc(100vh - 42px); }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+/* ---------- Panels ---------- */
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 18px;
+}
+.panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.panel h3 { font-size: 15px; }
+
+/* ---------- Home ---------- */
+.home-hero { margin-bottom: 22px; }
+.home-hero h1 { font-size: 26px; font-weight: 800; }
+.home-hero p { color: var(--muted); margin-top: 4px; }
+
+.launch-dock {
+  position: absolute;
+  right: 28px;
+  bottom: 64px;
+  width: 360px;
+  background: linear-gradient(180deg, var(--panel), var(--bg-2));
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.45);
+}
+.launch-dock-main { display: flex; flex-direction: column; gap: 8px; }
+.launch-dock-actions { display: flex; gap: 8px; }
+.launch-dock-actions #btn-play { flex: 1; }
+.launch-dock-actions #btn-stop { flex: 1; }
+
+.profile-version-box {
+  width: 100%;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px;
+}
+.profile-version-box #version-search {
+  width: 100%;
+  margin-bottom: 8px;
+  padding: 7px 10px;
+  font-size: 12px;
+}
+.version-list.compact { max-height: 190px; }
+.version-list.compact .ver-item { padding: 6px 9px; border-radius: 7px; }
+.version-list.compact .v-id { font-size: 13px; }
+.version-list.compact .v-date { display: none; }
+
+.version-panel #version-search { width: 100%; margin-bottom: 10px; }
+.version-list {
+  max-height: 420px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-right: 4px;
+}
+.ver-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--panel-2);
+  border: 1px solid transparent;
+  padding: 9px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+.ver-item:hover { border-color: var(--accent); }
+.ver-item.selected {
+  border-color: var(--accent);
+  background: linear-gradient(90deg, rgba(139,92,246,0.15), var(--panel-2));
+}
+.ver-item .v-main { display: flex; flex-direction: column; gap: 1px; }
+.ver-item .v-id { font-weight: 600; }
+.ver-item .v-date { font-size: 10px; color: var(--muted); }
+.ver-item .v-type {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 99px;
+  background: #ffffff10;
+  color: var(--muted);
+}
+.ver-item .v-type.release { color: var(--ok); }
+.ver-item .v-type.snapshot { color: var(--accent-2); }
+.ver-item .v-installed { font-size: 11px; color: var(--ok); margin-right: 8px; }
+
+.play-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  background: linear-gradient(180deg, var(--panel), var(--bg-2));
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 26px 20px;
+}
+.big-avatar-wrap img {
+  width: 96px; height: 96px;
+  image-rendering: pixelated;
+  border-radius: 12px;
+  border: 2px solid var(--accent);
+  box-shadow: 0 0 24px rgba(139,92,246,0.35);
+}
+#btn-play {
+  width: 100%;
+  padding: 16px;
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: 3px;
+  color: white;
+  background: linear-gradient(135deg, var(--accent), #4c1d95 70%);
+  border: none;
+  border-radius: 12px;
+  box-shadow: 0 6px 22px rgba(139,92,246,0.4);
+  transition: all 0.15s ease;
+}
+#btn-play:hover:not(:disabled) { filter: brightness(1.2); transform: translateY(-1px); }
+#btn-play:disabled { opacity: 0.5; cursor: wait; box-shadow: none; }
+
+#progress-wrap { width: 100%; }
+.progress-label { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+.progress-bar {
+  height: 8px;
+  background: var(--bg-2);
+  border-radius: 99px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+#progress-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  transition: width 0.2s ease;
+}
+#play-status { font-size: 12px; color: var(--muted); min-height: 16px; }
+
+/* ---------- Console ---------- */
+#console {
+  background: #07080c;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px;
+  height: calc(100vh - 235px);
+  overflow-y: auto;
+  font-family: 'Cascadia Code', Consolas, monospace;
+  font-size: 12px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.log-line.hidden-by-filter { display: none; }
+.crash-hint {
+  border-left: 3px solid var(--accent-2);
+  padding: 8px 12px;
+  margin: 6px 0;
+  background: rgba(34, 211, 238, 0.06);
+  border-radius: 6px;
+}
+.crash-hint b { color: var(--accent-2); }
+#console { line-height: 1.55; user-select: text; }
+
+/* ---------- Accounts ---------- */
+.account-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-top: 14px;
+}
+.account-cards .panel { display: flex; flex-direction: column; gap: 10px; }
+.account-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+.acc-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--muted); flex: none; }
+.acc-dot.msa { background: var(--accent); box-shadow: 0 0 8px rgba(139,92,246,0.8); }
+.acc-dot.offline { background: var(--accent-2); }
+.acc-name { font-weight: 600; flex: 1; }
+.acc-tag { font-size: 11px; color: var(--muted); }
+.settings-actions { display: flex; gap: 10px; align-items: center; margin-top: 4px; }
+
+/* Avatar fallback tile (used when the face service is unreachable) */
+#big-face, #account-face {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  color: #fff;
+  text-align: center;
+  overflow: hidden;
+}
+#account-face { font-size: 14px; }
+#big-face { font-size: 40px; }
+.code-big {
+  font-family: Consolas, monospace;
+  font-size: 26px;
+  letter-spacing: 6px;
+  text-align: center;
+  background: var(--bg-2);
+  border: 1px dashed var(--accent);
+  border-radius: 10px;
+  padding: 12px;
+  color: var(--accent-2);
+}
+
+/* ---------- Settings ---------- */
+.settings-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+  margin: 14px 0;
+}
+.settings-grid .panel { display: flex; flex-direction: column; gap: 10px; }
+.settings-grid input[type="range"] { accent-color: var(--accent); }
+.row { display: flex; gap: 12px; }
+.row label { display: flex; flex-direction: column; gap: 4px; flex: 1; font-size: 12px; color: var(--muted); }
+.chk { display: flex; align-items: center; gap: 8px; color: var(--muted); cursor: pointer; }
+.chk input { accent-color: var(--accent); }
+#btn-save-settings { margin-top: 4px; }
+
+/* Version management table */
+.versions-table { display: flex; flex-direction: column; gap: 6px; }
+.version-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto auto;
+  gap: 14px;
+  align-items: center;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 14px;
+}
+.version-row .vr-id { font-weight: 700; display: flex; align-items: center; gap: 8px; }
+.v-tag {
+  font-size: 10px;
+  padding: 2px 7px;
+  border-radius: 99px;
+  background: rgba(34,211,238,0.15);
+  color: var(--accent-2);
+  font-weight: 700;
+}
+.btn.danger-soft {
+  background: transparent;
+  border: 1px solid var(--danger);
+  color: var(--danger);
+  padding: 5px 10px;
+  font-size: 12px;
+}
+.btn.danger-soft:hover { background: var(--danger); color: white; }
+
+/* Mods page */
+.mods-toolbar { display: flex; gap: 10px; }
+.mods-toolbar input, .mods-toolbar select { flex: 1; }
+.mods-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 12px;
+  margin-top: 14px;
+}
+.mod-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.mod-card:hover { border-color: var(--accent); }
+.mod-head { display: flex; gap: 12px; }
+.mod-icon { width: 44px; height: 44px; border-radius: 8px; flex: none; object-fit: cover; }
+.mod-title { font-weight: 700; }
+.mod-desc {
+  font-size: 12px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.mod-meta { font-size: 11px; margin-top: 2px; }
+
+/* Home: join-server picker + fabric inputs */
+#join-server { width: 100%; }
+
+/* Toast notifications */
+#toasts {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 200;
+  pointer-events: none;
+}
+.toast {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  color: var(--text);
+  padding: 10px 16px;
+  border-radius: 10px;
+  font-size: 13px;
+  box-shadow: 0 8px 28px rgba(0,0,0,0.45);
+  opacity: 0;
+  transform: translateX(24px);
+  transition: all 0.25s ease;
+  max-width: 340px;
+}
+.toast.show { opacity: 1; transform: none; }
+.toast.ok { border-left-color: var(--ok); }
+.toast.error { border-left-color: var(--danger); }
+
+/* Console log coloring */
+.log-err { color: #f87171; }
+.log-warn { color: #fbbf24; }
+.log-sys { color: var(--accent-2); }
+
+/* About page */
+.mono-sm {
+  font-family: Consolas, monospace;
+  font-size: 11px;
+  color: var(--text);
+  word-break: break-all;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 8px;
+  user-select: text;
+}
+
+/* Scrollbars */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 8px; }
+::-webkit-scrollbar-thumb:hover { background: #343b52; }
+::-webkit-scrollbar-track { background: transparent; }
+
+</style>
+  <title>Darklauncher</title>
+</head>
+<body>
+  <canvas id="bg-canvas"></canvas>
+  <div id="app">
+    <!-- Titlebar -->
+    <header id="titlebar">
+      <div class="tb-left">
+        <img class="logo-dot" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAKiElEQVR42n2Xi9NU5X3Hl3d3z+6e+/2yZy/n7O7Zy8u774XLCy9ERFEwCtEyGm1V1MHYdiZNSzVtpk1LnWmTlHFqWifGtIYYNOkoSpFJopAmJsamI0oVuQRBlKAvZvJPfNpz9gWB0p6ZzzxnZ2fP9/u7PL+zTy532VUsCNsVSUUXNbTKaD2PJcnIgogh6RdQFR1ZldF1C101s8+aKKOLKrqkoIsKXUXGExWKRWF77v+7tIvEzqNIn9y3Aht9QViTR+KpqKUauIqBpVnYqomjGRiKiqloqLLKnCyxRDVIny+KMlcUH7nV0CXtQnSOZKArI/Hz0aak96mwqZiYqomnfIKrmDjpqo7MpNQkhd5CNiRpxCXiI8FPhC7GVAwUWcsEU7Q0Yt3CS4VVM4vc1xwCzcFTLPwFPMXIDH2hrCEvGM/KupBNSVwwURJK2y8XvZzzBizZwFNtPN0kND3qtkfsBDSdKrHl0bBdaoZNqNv4CxkxFBEzzZosXXjexSXOGbL6fwqnrq3sQWnEFlXVILJc+k7ATFBjdRixrtVjbdxmVRwz24iZCpv0vSp10yXU7MyEpagLSKjKpZnOXVzzLFpFRlcMdFUf1TVNtWHQtCz6fo3n772Rs9vu4OxT3+LUk1/nzF9+nl//82OcOvQGN/emuCUZ51NxxHS1SWx7VLW0TFrGBSOykTVxZsCQzEsjV0bbyV2oYVXVcAyFMzcMebvf4FQYcLBd451ulROdmENJg4PLE96Z6XL02Sc5tvMJNgwn2ZB0WVav0XN8Qt3ElVVsdWQibUxNMUYGLMXO0pyiqkYmbix0dlU0+Ml0wv5WwFOBwsFqwJF2jXfjNu+0a7wSNTjYqHFs0OJXScyp8Q4nN3+Gt6+f47nX/5Mb4jYrwxodx1/IhIqjaNiqga2MZkbOVhxSXM3DUV0MbbSFUgMvhwF/Y+qcslyOhyHfadh8P/Y4VKvzBdfjraTHyV6fU+MJ7yYt3hs0eb/b4mS/wYmrZzl04GXWRy2m/XrWO75m4KQZkJULfZBLRS/H1x1+UPHZpuv8lV7miOex0zP4B8/hO6FP39TZ4Xp8M4452e2yp9/keCvhF92It/pNji7pcmo85sTKLp979DGua7SY9AOatkugGRcykfbfFQ2Ekss+2WG7IvKIa/CEZ/J0aPN41WNPGLBCN9lgWRzoNjnR6bO31+aFXsyepMF7SZuz/TZv79jGB50mRx58gM3thDWNBn03pGnYBNnk1DITVzCg85iqsE0qs9dQ+YFp8qZp8Ey9ynMNj3eqIdtMj5eiNmu9KkeSPju7Efu6bb7XiTjo1/hgcYeT/SYnW3Xe8G2OPf1tPh3HTAdNWgtN6al6ZuJ/GagZAU8rOl+TRT7UFP7dM9kVmLzYrLO/5XEgqLLOsHk6aGEHTQK/zo/CiB92u+yqh+xvxezrBpytNzndiflx1eet9au5PumxshbRdgLqpk1VHTVlzlEtHNXI5rejmnyx22VbReKfxBI/Mk2O+gbHPZvDUZNXW1V+FvX4oW8TWRaG66O7Pi+2ehzuJexr1/lGzeKxhse/BQZnopBfRh5nZvusuPEzrGrE9PzaJwZkldz5IZENHdNmj+/wF+UKfy+L7HZVTgcW/1Fz+KAb8X4n4rUoHbsGoeFRchwk02OX57G7GvNN3+UbocMzoc3uusvJ0OM3vs98w+fHL+3mmrjNIGgSOz51w8p6IecrOq6kZmO2aTvs1XQeFks8Kgq8ZKl8HLq8Xrd5r1XncKvBH5g2sm6g6A4V06Fs2BlfMqvMyDJ7dJOfhx4vNBwOV132uiZvhSZnV06xrp0w4TdIvCqx49Ew7ZGBlHRQtCyHr6oqXymV+NuKwFeUIh9aFi+FLsdqVT6shjyse4yLKhXdypB1C9GwcDWLdw2H3xdFnlUdzsY19ocWL/omr0YmZ+cmua7TY6LaoOuHrOsMmfYDcqlwSs2waBoG2w2dHZrIAbnA1xWRJ3WJ46bDK6HNy77JHekIlUUkRUdSTUTNRNJ06qrF4Zll7HR8XrNcjk63OFIz2P8/vzmRtHnvD29jfbvHMGzQ9wIGQUjX8cmlwqFmEhoWie1zk1flNUvicaXMk5rMc7rIKUnn2cBiv2pyIv1TISqURDl7TXdbEbKsEkgKsWpyulbnnGPwlGEwXw/4yHM4E/kc/+KXWN/pMhU2mAhq9FyfvhuMDKREppsZaDs2P1NF3nAVfmWaHDYVXlAN9skST5Q0tpsupXIZV9WYCWvccs0a+o0GpqgyEBVOBwGHTIvPSQX+q+ryZs3ig1aVr/7rLtZ3kszAsFqn5wdM+CG5KTsgskw6tssf1zvcXo34u3KFVxWZeUXkmYrMfVKJk2WVLflFOMUKY0KZKAyxyiJuRUQWyuhlkelShbtKFd73DeZ9lzO+w7uBy+lOxGfHF7O2nbCs3mLo1+h5Aff3p8jd0qhza7U9it62+XK9zdqmxSumxvOuxJoxIeNhKc/rgohVEsgXS+TzAnKxRLkoUBZKyIJAt1zimKZwwFGZr/ocr1sc27yZk9eu5tbeOFdFbZbV4szAMKiztNEi96ftHhO+z2K/Rt/2WOa4bGw3+Klk8JFi8P1KgT9atIidcplHLBO7JFAslhAKwiVIxSINoUJp0Rgbi3nO1VzmJxNOzU5z23CKjZ0+Kxptlnl1Jr06G+OY5UGN3KwfMe0GTLm17IuhHWbr1nbEr0WFj3WbeUXjnGLxgmyh51PBAuV8yki8VBQwBIG4VGKyqPFbTeVczeej0OHNrffy2aTLtc2EOwcDlgV1Hp0asnv5NLuW9sltanS5rh4xG0Qs9Zss8ZvZuiKMs64/qirMmwa/1XU+LuWRiwKVfOESSoKAVSxzu+Uzb+j8xrT4rufw4a238HuDIZ+OE/58YsB3ZybYOTXgW9MDHhkOeGSiT26uETFXq7OiWmNptcliP2RVs8PKZoe1cZ+dToWDts5ptcKsUEIqFCmPLaJYyFPMFzOEQpF6WWCYvkFVi3OKwY7paTZGETd3ulwdt3loYsDjSyf4x5khOyYHPLR4wANJm1xN1bbPNdrMNTusihI+1eqxuplwVdxjTdTj6qjLL3WNf6koiPkxhOLYBeH8WJqB0b0sStxseDx/8w3cfdMG7p2eZMa22Do9ZO/Vczy0bMiXl0zw4OJJHhz0uK/X4p52e3Q2uCZKWBd3ub7V45qkn3Ftp599viEZsmEwQX4sn57tKIwVLhgo5Au45QpCvpj1gZZmSBL569nlTJo6xXyetX6du4ZDbh8M+N3+gK39hC1Jh1s77UtPRxtaXW7qDFjd7bImarOpN2TTYIq6onPPzCqKhRL5gjAiPzKRbsFGpUIxLyyUYtSQd/s1VtkmlbFFXOX7bFk8wZZen8/3BzwwGOfOpHvl8+Gm7ji/051gc3+STcMp7phZwZ2TSxAKpWzrFYolxrItONqGQUmgXS5f1AsjA0K5yArbpZJfxJ9EMd+eXcLW8QFbkoS7L4/88uuOiUluG5/mnqkpVjk+9w+X82eTc9w1vZR8oYQiCEj5claO7y2ZZffyqxCK5SwLK1WV4pjAlnbCje0ESyhxf1Rnx/IJtvb63HeFyP8bgxbOYqRc3CAAAAAASUVORK5CYII=" alt="" draggable="false" />
+        <span class="tb-title">DARK<span class="accent">LAUNCHER</span></span>
+      </div>
+      <div class="tb-right">
+        <button class="tb-btn" id="btn-min" title="Minimize">&#x2013;</button>
+        <button class="tb-btn" id="btn-max" title="Maximize">&#x25A1;</button>
+        <button class="tb-btn tb-close" id="btn-close" title="Close">&#x2715;</button>
+      </div>
+    </header>
+
+    <div id="body">
+      <!-- Sidebar -->
+      <nav id="sidebar">
+        <button class="nav-btn active" data-page="home">
+          <span class="ico">&#127968;</span><span>Home</span>
+        </button>
+        <button class="nav-btn" data-page="console">
+          <span class="ico">&#9654;</span><span>Console</span>
+        </button>
+        <button class="nav-btn" data-page="versions">
+          <span class="ico">&#128230;</span><span>Versions</span>
+        </button>
+        <button class="nav-btn" data-page="mods">
+          <span class="ico">&#129514;</span><span>Mods</span>
+        </button>
+        <button class="nav-btn" data-page="shaders">
+          <span class="ico">&#10024;</span><span>Shaders</span>
+        </button>
+        <button class="nav-btn" data-page="servers">
+          <span class="ico">&#127760;</span><span>Servers</span>
+        </button>
+        <button class="nav-btn" data-page="accounts">
+          <span class="ico">&#128100;</span><span>Accounts</span>
+        </button>
+        <button class="nav-btn" data-page="settings">
+          <span class="ico">&#9881;</span><span>Settings</span>
+        </button>
+        <button class="nav-btn" data-page="about">
+          <span class="ico">&#8505;</span><span>About</span>
+        </button>
+        <div class="sidebar-footer">
+          <div id="account-chip">
+            <img id="account-face" src="https://minotar.net/helm/Steve/32" alt="" />
+            <div class="acc-meta">
+              <span id="account-name">Player</span>
+              <span id="account-type">Offline</span>
+            </div>
+          </div>
+        </div>
+      </nav>
+
+      <!-- Content -->
+      <main id="content">
+        <!-- HOME -->
+        <section class="page active" id="page-home">
+          <div class="home-hero">
+            <h1>Welcome to <span class="accent">Darklauncher</span></h1>
+            <p id="hero-sub">Pick a version and dive into the dark.</p>
+          </div>
+
+          <div class="launch-dock">
+            <div class="launch-dock-main">
+              <div class="profile-version-box">
+                <div class="panel-head" style="padding:0;margin-bottom:6px">
+                  <h4>Version</h4>
+                  <label class="chk muted"><input type="checkbox" id="show-snapshots" /> Snapshots</label>
+                </div>
+                <input id="version-search" type="text" placeholder="Search versions..." />
+                <div id="version-list" class="version-list compact"></div>
+              </div>
+
+              <select id="join-server">
+                <option value="">Singleplayer / server browser</option>
+              </select>
+            </div>
+
+            <div class="launch-dock-actions">
+              <button id="btn-play">PLAY</button>
+              <button id="btn-stop" class="btn danger hidden">&#9632; Stop</button>
+            </div>
+            <div id="progress-wrap" class="hidden">
+              <div class="progress-label" id="progress-label">Preparing...</div>
+              <div class="progress-bar"><div id="progress-fill"></div></div>
+            </div>
+            <div id="play-status">Ready.</div>
+          </div>
+        </section>
+
+        <!-- CONSOLE -->
+        <section class="page" id="page-console">
+          <div class="panel-head">
+            <h3>Console</h3>
+            <div class="row" style="gap:8px">
+              <input id="console-filter" type="text" placeholder="Filter (e.g. ERROR, Exception)..." style="width:260px" />
+              <label class="chk muted"><input type="checkbox" id="console-errors-only" /> Errors only</label>
+              <button class="btn small" id="btn-copy-errors">Copy errors</button>
+              <button class="btn small" id="btn-clear-console">Clear</button>
+            </div>
+          </div>
+          <pre id="console"></pre>
+          <div class="panel" style="margin-top:12px">
+            <div class="panel-head">
+              <h3>Error codes &amp; fixes</h3>
+              <button class="btn small" id="btn-crash-analysis">Analyze last crash</button>
+            </div>
+            <div id="crash-hints" class="muted">Launch the game — common crash codes will be explained here automatically.</div>
+          </div>
+        </section>
+
+        <!-- ACCOUNTS -->
+        <section class="page" id="page-accounts">
+          <h2>Accounts</h2>
+          <div class="account-cards">
+            <div class="panel">
+              <h3>Microsoft Account</h3>
+              <p class="muted">Sign in with your real Minecraft account. A device code flow will open in your browser.</p>
+              <button class="btn" id="btn-msa">Sign in with Microsoft</button>
+              <div id="msa-box" class="hidden">
+                <p>Go to <a href="#" id="msa-uri">microsoft.com/link</a> and enter:</p>
+                <div id="msa-code" class="code-big">------</div>
+                <p class="muted" id="msa-status">Waiting for approval...</p>
+              </div>
+            </div>
+            <div class="panel">
+              <h3>Saved Accounts</h3>
+              <div id="account-list"></div>
+              <button class="btn small" id="btn-signout">Sign out &amp; clear accounts</button>
+            </div>
+            <div class="panel">
+              <h3>Offline Account</h3>
+              <p class="muted">Play without signing in (works for offline servers and singleplayer cracks).</p>
+              <input id="offline-name" type="text" maxlength="16" placeholder="Username" />
+              <button class="btn" id="btn-offline">Use Offline Account</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- SETTINGS -->
+        <section class="page" id="page-settings">
+          <h2>Settings</h2>
+          <div class="settings-grid">
+            <div class="panel">
+              <h3>Memory</h3>
+              <label class="muted" id="mem-label">4096 MB</label>
+              <input type="range" id="set-memory" min="1024" max="16384" step="512" value="4096" />
+            </div>
+            <div class="panel">
+              <h3>Java</h3>
+              <p class="muted">Leave empty to auto-detect.</p>
+              <input id="set-java" type="text" placeholder="Path to javaw.exe / java" />
+            </div>
+            <div class="panel">
+              <h3>CurseForge API key</h3>
+              <p class="muted">Free key from <b>console.curseforge.com</b> enables the CurseForge tab in Mods &amp; Shaders.</p>
+              <input id="set-cfkey" type="password" placeholder="Paste your x-api-key here" />
+            </div>
+            <div class="panel" style="grid-column: 1 / -1">
+              <h3>Animated background</h3>
+              <div class="mods-toolbar">
+                <select id="bg-theme"></select>
+                <button class="btn" id="btn-bg-add-image">Add your image…</button>
+              </div>
+              <p class="muted">“Custom blocks” floats your own images among Minecraft blocks. “Image background” shows a picture behind the UI.</p>
+              <div class="panel-head" style="margin-top:10px"><h4 class="muted">Your images</h4></div>
+              <div id="bg-images"></div>
+            </div>
+            <div class="panel">
+              <h3>Window</h3>
+              <div class="row">
+                <label>Width <input id="set-width" type="number" min="400" max="7680" /></label>
+                <label>Height <input id="set-height" type="number" min="300" max="4320" /></label>
+              </div>
+              <label class="chk"><input type="checkbox" id="set-fullscreen" /> Fullscreen</label>
+              <label class="chk"><input type="checkbox" id="set-keepopen" /> Keep launcher open</label>
+              <label class="chk"><input type="checkbox" id="set-closetotray" /> Close button minimizes to tray</label>
+            </div>
+          </div>
+          <div class="settings-actions">
+            <button class="btn" id="btn-save-settings">Save Settings</button>
+            <button class="btn small" id="btn-open-folder">Open game folder</button>
+          </div>
+        </section>
+
+        <!-- VERSIONS (management) -->
+        <section class="page" id="page-versions">
+          <h2>Installed Versions</h2>
+          <div class="panel-head">
+            <p class="muted">Disk usage, last played and cleanup for every installed version.</p>
+            <button class="btn small" id="btn-refresh-versions">Refresh</button>
+          </div>
+          <div class="panel" style="margin-bottom:16px">
+            <h3>Install Fabric</h3>
+            <div class="mods-toolbar">
+              <select id="fabric-game"></select>
+              <input id="fabric-loader" type="text" placeholder="Loader version (empty = latest)" />
+              <button class="btn" id="btn-fabric-install">Install Fabric</button>
+            </div>
+            <p class="muted">Creates a moddable Fabric instance of the given version. It then appears in the version list and in the Mods page.</p>
+          </div>
+          <div id="versions-table" class="versions-table"></div>
+        </section>
+
+        <!-- MODS -->
+        <section class="page" id="page-mods">
+          <h2>Mods</h2>
+          <div class="panel-head">
+            <p class="muted">Browse Modrinth and install into a Fabric instance. Install Fabric first!</p>
+          </div>
+          <div class="panel">
+            <div class="mods-toolbar">
+              <select id="mods-source" title="Catalog source">
+                <option value="modrinth">Modrinth</option>
+                <option value="curseforge">CurseForge</option>
+              </select>
+              <select id="mods-instance"></select>
+              <input id="mods-search" type="text" placeholder="Search mods..." />
+              <button class="btn" id="btn-mods-search">Search</button>
+              <button class="btn accent" id="btn-mods-top" title="Most downloaded client mods">Top</button>
+            </div>
+            <p class="muted hidden" id="cf-hint">CurseForge needs a free developer API key. Get one at <b>console.curseforge.com</b> and paste it in Settings → CurseForge API key.</p>
+          </div>
+          <div id="mods-results" class="mods-grid"></div>
+          <div class="load-more-wrap">
+            <button class="btn" id="btn-mods-more">Load more</button>
+            <span class="muted" id="mods-count"></span>
+          </div>
+          <div class="panel" style="margin-top:16px">
+            <div class="panel-head">
+              <h3>Installed mods</h3>
+              <button class="btn small" id="btn-mods-refresh">Refresh</button>
+            </div>
+            <div id="mods-installed"></div>
+          </div>
+        </section>
+
+        <!-- SHADERS -->
+        <section class="page" id="page-shaders">
+          <h2>Shaders</h2>
+          <div class="panel-head">
+            <p class="muted">Shader packs install into the shared shaderpacks folder. Install the <b>Iris</b> mod on a Fabric instance to use them, then pick the pack in-game (Options → Video Settings → Shader Packs).</p>
+          </div>
+          <div class="panel">
+            <div class="mods-toolbar">
+              <select id="shader-source" title="Catalog source">
+                <option value="modrinth">Modrinth</option>
+                <option value="curseforge">CurseForge</option>
+              </select>
+              <input id="shader-search" type="text" placeholder="Search shader packs..." />
+              <button class="btn" id="btn-shader-search">Search</button>
+              <button class="btn accent" id="btn-shader-top">Most downloaded</button>
+            </div>
+          </div>
+          <div id="shader-results" class="mods-grid"></div>
+          <div class="load-more-wrap">
+            <button class="btn hidden" id="btn-shader-more">Load more</button>
+            <span class="muted" id="shader-count"></span>
+          </div>
+          <div class="panel" style="margin-top:16px">
+            <div class="panel-head">
+              <h3>Installed shader packs</h3>
+              <button class="btn small" id="btn-shader-refresh">Refresh</button>
+            </div>
+            <div id="shader-installed"></div>
+          </div>
+        </section>
+
+        <!-- SERVERS -->
+        <section class="page" id="page-servers">
+          <h2>Servers</h2>
+          <div class="panel-head">
+            <p class="muted">Save servers and join them with one click from the play screen.</p>
+          </div>
+          <div class="account-cards">
+            <div class="panel">
+              <h3>Add Server</h3>
+              <input id="srv-name" type="text" maxlength="64" placeholder="Name (e.g. Hypixel)" />
+              <input id="srv-host" type="text" placeholder="Address (mc.hypixel.net)" />
+              <input id="srv-port" type="number" min="1" max="65535" placeholder="Port (25565)" />
+              <button class="btn" id="btn-srv-add">Save Server</button>
+            </div>
+            <div class="panel">
+              <h3>Saved Servers</h3>
+              <div id="server-list"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ABOUT -->
+        <section class="page" id="page-about">
+          <h2>About</h2>
+          <div class="settings-grid">
+            <div class="panel">
+              <h3 id="about-version">Darklauncher</h3>
+              <p class="muted" id="about-detail">Electron-based Minecraft launcher</p>
+              <p class="muted">Real launcher logic: Mojang manifest, sha1-verified downloads, natives
+              extraction, Microsoft device-code login. No wrappers, no bloat.</p>
+            </div>
+            <div class="panel">
+              <h3>Diagnostics</h3>
+              <p class="muted">Data folder:</p>
+              <p class="mono-sm" id="about-datadir">—</p>
+              <p class="muted">Log file:</p>
+              <p class="mono-sm" id="about-logfile">—</p>
+              <button class="btn small" id="btn-open-logs">Open log folder</button>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <!-- Toast notifications -->
+  <div id="toasts"></div>
+
+  <script>
+  window.darklauncher.bgList = async () => ({ ok: true, files: [] });
+  window.darklauncher.bgLoad = async () => ({ ok: false });
+  window.darklauncher.bgChooseImage = async () => ({ ok: false });
+  window.darklauncher.bgDelete = async () => ({ ok: true });
+</script>
+  <script>
+'use strict';
+
+// Animated background engine. 15 built-in themes drawn on a single canvas
+// behind the UI, plus user images (background or floating blocks).
+// Performance: one requestAnimationFrame loop, paused when hidden, capped
+// at ~40fps. Zero dependencies.
+
+(function () {
+  const canvas = document.getElementById('bg-canvas');
+  const ctx = canvas.getContext('2d');
+  let W = 0, H = 0;
+  let currentTheme = 'off';
+  let themeState = null;
+  let rafId = 0;
+  let lastFrame = 0;
+  const FRAME_MIN_MS = 25; // ~40fps cap
+
+  function resize() {
+    W = canvas.width = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+    if (currentTheme !== 'off') startTheme(currentTheme, true);
+  }
+  window.addEventListener('resize', resize);
+
+  const rand = (min, max) => min + Math.random() * (max - min);
+  const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+
+  // Built-in texture painters (small offscreen canvases used as tiles).
+  function makeTexture(draw) {
+    const t = document.createElement('canvas');
+    t.width = t.height = 16;
+    draw(t.getContext('2d'));
+    return t;
+  }
+  const TEX = {
+    grass: makeTexture((c) => {
+      c.fillStyle = '#79553d'; c.fillRect(0, 0, 16, 16);
+      c.fillStyle = '#5d9143'; c.fillRect(0, 0, 16, 4);
+      c.fillStyle = 'rgba(0,0,0,0.15)';
+      for (let i = 0; i < 12; i++) c.fillRect(Math.floor(Math.random() * 16), 4 + Math.floor(Math.random() * 12), 1, 1);
+    }),
+    dirt: makeTexture((c) => {
+      c.fillStyle = '#79553d'; c.fillRect(0, 0, 16, 16);
+      c.fillStyle = 'rgba(0,0,0,0.18)';
+      for (let i = 0; i < 16; i++) c.fillRect(Math.floor(Math.random() * 16), Math.floor(Math.random() * 16), 1, 1);
+    }),
+    stone: makeTexture((c) => {
+      c.fillStyle = '#8a8a8a'; c.fillRect(0, 0, 16, 16);
+      c.fillStyle = 'rgba(0,0,0,0.22)';
+      for (let i = 0; i < 14; i++) c.fillRect(Math.floor(Math.random() * 16), Math.floor(Math.random() * 16), 2, 1);
+    }),
+    diamond: makeTexture((c) => {
+      c.fillStyle = '#7ec8c8'; c.fillRect(0, 0, 16, 16);
+      c.fillStyle = '#4aedd9';
+      [[3, 3], [10, 6], [6, 11]].forEach(([x, y]) => c.fillRect(x, y, 3, 3));
+      c.fillStyle = 'rgba(255,255,255,0.5)'; c.fillRect(3, 3, 1, 1); c.fillRect(10, 6, 1, 1);
+    }),
+    gold: makeTexture((c) => {
+      c.fillStyle = '#9c8342'; c.fillRect(0, 0, 16, 16);
+      c.fillStyle = '#f5d93f';
+      [[2, 2], [9, 4], [5, 9], [12, 11]].forEach(([x, y]) => c.fillRect(x, y, 3, 2));
+    }),
+    redstone: makeTexture((c) => {
+      c.fillStyle = '#8a8a8a'; c.fillRect(0, 0, 16, 16);
+      c.fillStyle = '#d63b2f';
+      [[3, 2], [8, 5], [12, 9], [4, 11]].forEach(([x, y]) => c.fillRect(x, y, 2, 2));
+    }),
+    tnt: makeTexture((c) => {
+      c.fillStyle = '#d63b2f'; c.fillRect(0, 0, 16, 16);
+      c.fillStyle = '#f2f2f2'; c.fillRect(0, 5, 16, 6);
+      c.fillStyle = '#111'; c.font = '6px monospace'; c.fillText('TNT', 2, 10);
+    }),
+    obsidian: makeTexture((c) => {
+      c.fillStyle = '#1b1123'; c.fillRect(0, 0, 16, 16);
+      c.fillStyle = '#3c2a56';
+      for (let i = 0; i < 8; i++) c.fillRect(Math.floor(Math.random() * 14), Math.floor(Math.random() * 14), 2, 2);
+    }),
+    emerald: makeTexture((c) => {
+      c.fillStyle = '#5c8a50'; c.fillRect(0, 0, 16, 16);
+      c.fillStyle = '#41f384';
+      [[4, 3], [10, 7], [6, 11]].forEach(([x, y]) => c.fillRect(x, y, 3, 3));
+    })
+  };
+  const BLOCKS = ['grass', 'dirt', 'stone', 'diamond', 'gold', 'redstone', 'tnt', 'obsidian', 'emerald'];
+
+  // ---------------------------------------------------------------- themes
+  const themes = {};
+
+  // 1. Floating Minecraft blocks drifting upward (the classic request).
+  themes.blocks = {
+    init: (s) => {
+      s.items = Array.from({ length: 22 }, () => ({
+        tex: pick(BLOCKS), x: rand(0, W), y: rand(0, H),
+        size: rand(22, 52), vy: rand(-0.6, -0.15), rot: rand(0, Math.PI * 2), vr: rand(-0.01, 0.01), wobble: rand(0, 6.28)
+      }));
+    },
+    draw: (s, t) => {
+      for (const b of s.items) {
+        b.y += b.vy; b.rot += b.vr; b.wobble += 0.02;
+        const x = b.x + Math.sin(b.wobble) * 14;
+        if (b.y < -60) { b.y = H + 40; b.x = rand(0, W); b.tex = pick(BLOCKS); }
+        ctx.save();
+        ctx.translate(x, b.y); ctx.rotate(b.rot);
+        ctx.globalAlpha = 0.85;
+        ctx.drawImage(TEX[b.tex], -b.size / 2, -b.size / 2, b.size, b.size);
+        ctx.restore();
+      }
+      ctx.globalAlpha = 1;
+    }
+  };
+
+  // 2. Red moon (Akatsuki vibe) with drifting embers.
+  themes.redmoon = {
+    init: (s) => {
+      s.embers = Array.from({ length: 60 }, () => ({ x: rand(0, W), y: rand(0, H), r: rand(1, 3.2), vx: rand(-0.3, 0.3), vy: rand(-0.7, -0.2), a: rand(0.3, 0.9) }));
+    },
+    draw: (s, t) => {
+      const g = ctx.createRadialGradient(W * 0.5, H * 0.42, 10, W * 0.5, H * 0.42, Math.min(W, H) * 0.36);
+      g.addColorStop(0, '#e02424'); g.addColorStop(0.7, '#7a0f0f'); g.addColorStop(1, 'rgba(20,4,4,0)');
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(W * 0.5, H * 0.42, Math.min(W, H) * 0.32, 0, 7); ctx.fill();
+      // silhouette figure
+      ctx.fillStyle = 'rgba(5,2,2,0.9)';
+      ctx.beginPath();
+      ctx.ellipse(W * 0.5, H * 0.52, Math.min(W, H) * 0.045, Math.min(W, H) * 0.2, 0, 0, 7);
+      ctx.fill();
+      for (const e of s.embers) {
+        e.x += e.vx; e.y += e.vy;
+        if (e.y < -10) { e.y = H + 10; e.x = rand(0, W); }
+        ctx.globalAlpha = e.a; ctx.fillStyle = '#ff5544';
+        ctx.beginPath(); ctx.arc(e.x, e.y, e.r, 0, 7); ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    }
+  };
+
+  // 3. Starfield warp.
+  themes.warp = {
+    init: (s) => { s.stars = Array.from({ length: 140 }, () => ({ x: rand(-1, 1), y: rand(-1, 1), z: rand(0.1, 1) })); },
+    draw: (s) => {
+      ctx.fillStyle = '#04060c'; ctx.fillRect(0, 0, W, H);
+      for (const st of s.stars) {
+        st.z -= 0.008;
+        if (st.z <= 0.05) { st.x = rand(-1, 1); st.y = rand(-1, 1); st.z = 1; }
+        const px = (st.x / st.z) * W * 0.5 + W / 2;
+        const py = (st.y / st.z) * H * 0.5 + H / 2;
+        const r = Math.max(0.4, (1 - st.z) * 2.2);
+        ctx.globalAlpha = 1 - st.z + 0.2;
+        ctx.fillStyle = '#9ecbff';
+        ctx.fillRect(px, py, r, r);
+      }
+      ctx.globalAlpha = 1;
+    }
+  };
+
+  // 4. Rain of particles (Matrix-lite).
+  themes.matrix = {
+    init: (s) => { s.cols = Math.floor(W / 18); s.drops = Array.from({ length: s.cols }, () => rand(0, H)); },
+    draw: (s) => {
+      ctx.fillStyle = 'rgba(4,6,10,0.28)'; ctx.fillRect(0, 0, W, H);
+      ctx.font = '13px monospace';
+      for (let i = 0; i < s.drops.length; i++) {
+        ctx.fillStyle = Math.random() < 0.02 ? '#c4f7ff' : '#22d3ee';
+        ctx.fillText(String.fromCharCode(0x30a0 + Math.floor(Math.random() * 90)), i * 18, s.drops[i]);
+        s.drops[i] += rand(8, 18);
+        if (s.drops[i] > H && Math.random() > 0.97) s.drops[i] = 0;
+      }
+    }
+  };
+
+  // 5. Lava lamp blobs.
+  themes.lava = {
+    init: (s) => { s.blobs = Array.from({ length: 10 }, () => ({ x: rand(0, W), y: rand(0, H), r: rand(50, 140), vx: rand(-0.4, 0.4), vy: rand(-0.4, 0.4), hue: rand(260, 330) })); },
+    draw: (s) => {
+      ctx.fillStyle = '#0a0713'; ctx.fillRect(0, 0, W, H);
+      ctx.globalCompositeOperation = 'lighter';
+      for (const b of s.blobs) {
+        b.x += b.vx; b.y += b.vy;
+        if (b.x < -b.r || b.x > W + b.r) b.vx *= -1;
+        if (b.y < -b.r || b.y > H + b.r) b.vy *= -1;
+        const g = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, b.r);
+        g.addColorStop(0, `hsla(${b.hue},80%,60%,0.5)`);
+        g.addColorStop(1, 'hsla(280,80%,50%,0)');
+        ctx.fillStyle = g;
+        ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, 7); ctx.fill();
+      }
+      ctx.globalCompositeOperation = 'source-over';
+    }
+  };
+
+  // 6. Night parallax hills.
+  themes.hills = {
+    init: (s) => { s.t = 0; },
+    draw: (s) => {
+      s.t += 0.2;
+      const sky = ctx.createLinearGradient(0, 0, 0, H);
+      sky.addColorStop(0, '#0b0d1a'); sky.addColorStop(1, '#1b1035');
+      ctx.fillStyle = sky; ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = 'rgba(255,255,255,0.8)';
+      for (let i = 0; i < 40; i++) {
+        const x = (i * 137 + s.t * 0.3) % W, y = (i * 61) % (H * 0.4);
+        ctx.fillRect(x, y, 1.6, 1.6);
+      }
+      const layers = [[0.35, '#141a33'], [0.55, '#0f1327'], [0.75, '#0a0d1d']];
+      layers.forEach(([f, col], li) => {
+        ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(0, H);
+        for (let x = 0; x <= W; x += 24) {
+          const y = H * f - Math.sin((x + s.t * (li + 1) * 0.4) * 0.006) * 60 - Math.sin(x * 0.013) * 30;
+          ctx.lineTo(x, y);
+        }
+        ctx.lineTo(W, H); ctx.closePath(); ctx.fill();
+      });
+    }
+  };
+
+  // 7. Creeper faces floating.
+  themes.creeper = {
+    init: (s) => {
+      s.faces = Array.from({ length: 14 }, () => ({ x: rand(0, W), y: rand(0, H), size: rand(26, 60), vy: rand(-0.5, -0.1), rot: rand(-0.4, 0.4) }));
+    },
+    draw: (s) => {
+      for (const f of s.faces) {
+        f.y += f.vy;
+        if (f.y < -70) { f.y = H + 50; f.x = rand(0, W); }
+        const size = f.size, px = f.x, py = f.y;
+        ctx.save(); ctx.translate(px, py); ctx.rotate(f.rot); ctx.globalAlpha = 0.5;
+        ctx.fillStyle = '#4faa46'; ctx.fillRect(-size / 2, -size / 2, size, size);
+        ctx.fillStyle = '#0c1a0c';
+        const u = size / 8;
+        [[-3, -3], [1, -3], [-2, -1], [-1, 1], [0, 1], [1, 1], [-3, 2], [1, 2]].forEach(([a, b]) => ctx.fillRect(a * u, b * u, u, u));
+        ctx.restore(); ctx.globalAlpha = 1;
+      }
+    }
+  };
+
+  // 8. Grid horizon (synthwave).
+  themes.grid = {
+    init: (s) => { s.t = 0; },
+    draw: (s) => {
+      s.t += 0.03;
+      ctx.fillStyle = '#07030f'; ctx.fillRect(0, 0, W, H);
+      const horizon = H * 0.55;
+      ctx.strokeStyle = 'rgba(139,92,246,0.5)'; ctx.lineWidth = 1;
+      for (let i = 0; i < 20; i++) {
+        const y = horizon + Math.pow(i + s.t % 1, 2.2) * 3;
+        if (y > H) break;
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+      }
+      for (let x = -W; x <= W * 2; x += 80) {
+        ctx.beginPath();
+        ctx.moveTo(W / 2 + (x - W / 2) * 0.2, horizon);
+        ctx.lineTo(x + Math.sin(s.t) * 40, H);
+        ctx.stroke();
+      }
+      const sun = ctx.createLinearGradient(0, horizon - 160, 0, horizon);
+      sun.addColorStop(0, '#f43f5e'); sun.addColorStop(1, '#8b5cf6');
+      ctx.fillStyle = sun;
+      ctx.beginPath(); ctx.arc(W / 2, horizon, 90, Math.PI, 0); ctx.fill();
+    }
+  };
+
+  // 9. Falling snow.
+  themes.snow = {
+    init: (s) => { s.flakes = Array.from({ length: 120 }, () => ({ x: rand(0, W), y: rand(0, H), r: rand(1, 3), vy: rand(0.4, 1.6), drift: rand(0, 6.28) })); },
+    draw: (s) => {
+      for (const f of s.flakes) {
+        f.y += f.vy; f.drift += 0.02;
+        if (f.y > H + 5) { f.y = -5; f.x = rand(0, W); }
+        ctx.globalAlpha = 0.5 + (f.r / 3) * 0.5;
+        ctx.fillStyle = '#dfe9ff';
+        ctx.beginPath(); ctx.arc(f.x + Math.sin(f.drift) * 20, f.y, f.r, 0, 7); ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    }
+  };
+
+  // 10. Embers/sparks rising.
+  themes.embers = {
+    init: (s) => { s.parts = Array.from({ length: 80 }, () => ({ x: rand(0, W), y: rand(0, H), vx: rand(-0.2, 0.2), vy: rand(-1.4, -0.3), r: rand(0.8, 2.6), life: rand(0.3, 1) })); },
+    draw: (s) => {
+      for (const p of s.parts) {
+        p.x += p.vx + rand(-0.15, 0.15); p.y += p.vy;
+        if (p.y < -5) { p.y = H + 5; p.x = rand(0, W); p.life = rand(0.3, 1); }
+        p.life -= 0.002;
+        ctx.globalAlpha = Math.max(0, p.life);
+        ctx.fillStyle = p.life > 0.6 ? '#ffd166' : '#f43f5e';
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, 7); ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    }
+  };
+
+  // 11. Underwater bubbles.
+  themes.underwater = {
+    init: (s) => {
+      s.bubbles = Array.from({ length: 50 }, () => ({ x: rand(0, W), y: rand(0, H), r: rand(2, 8), vy: rand(-1.2, -0.3), wob: rand(0, 6.28) }));
+    },
+    draw: (s) => {
+      const sea = ctx.createLinearGradient(0, 0, 0, H);
+      sea.addColorStop(0, '#04263a'); sea.addColorStop(1, '#02131f');
+      ctx.fillStyle = sea; ctx.fillRect(0, 0, W, H);
+      ctx.strokeStyle = 'rgba(120,220,255,0.25)';
+      for (const b of s.bubbles) {
+        b.y += b.vy; b.wob += 0.03;
+        if (b.y < -10) { b.y = H + 10; b.x = rand(0, W); }
+        ctx.beginPath(); ctx.arc(b.x + Math.sin(b.wob) * 8, b.y, b.r, 0, 7); ctx.stroke();
+      }
+    }
+  };
+
+  // 12. Constellation links.
+  themes.constellation = {
+    init: (s) => { s.pts = Array.from({ length: 46 }, () => ({ x: rand(0, W), y: rand(0, H), vx: rand(-0.25, 0.25), vy: rand(-0.25, 0.25) })); },
+    draw: (s) => {
+      for (const p of s.pts) {
+        p.x += p.vx; p.y += p.vy;
+        if (p.x < 0 || p.x > W) p.vx *= -1;
+        if (p.y < 0 || p.y > H) p.vy *= -1;
+      }
+      ctx.strokeStyle = 'rgba(139,92,246,0.28)';
+      for (let i = 0; i < s.pts.length; i++) {
+        for (let j = i + 1; j < s.pts.length; j++) {
+          const a = s.pts[i], b = s.pts[j];
+          const d = Math.hypot(a.x - b.x, a.y - b.y);
+          if (d < 110) { ctx.globalAlpha = 1 - d / 110; ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); }
+        }
+      }
+      ctx.globalAlpha = 1; ctx.fillStyle = '#c4b5fd';
+      for (const p of s.pts) { ctx.beginPath(); ctx.arc(p.x, p.y, 1.8, 0, 7); ctx.fill(); }
+    }
+  };
+
+  // 13. TNT rain (chaotic fun).
+  themes.tntrain = {
+    init: (s) => {
+      s.items = Array.from({ length: 16 }, () => ({ x: rand(0, W), y: rand(-H, 0), size: rand(18, 40), vy: rand(1.5, 4), rot: rand(0, 6.28), vr: rand(-0.06, 0.06) }));
+    },
+    draw: (s) => {
+      for (const b of s.items) {
+        b.y += b.vy; b.rot += b.vr;
+        if (b.y > H + 50) { b.y = -50; b.x = rand(0, W); }
+        ctx.save(); ctx.translate(b.x, b.y); ctx.rotate(b.rot);
+        ctx.globalAlpha = 0.9;
+        ctx.drawImage(TEX.tnt, -b.size / 2, -b.size / 2, b.size, b.size);
+        ctx.restore();
+      }
+      ctx.globalAlpha = 1;
+    }
+  };
+
+  // 14. Diamond shimmer (slow sparkles on dark).
+  themes.diamond = {
+    init: (s) => { s.sparks = Array.from({ length: 70 }, () => ({ x: rand(0, W), y: rand(0, H), r: rand(0.6, 2.4), ph: rand(0, 6.28), sp: rand(0.01, 0.04) })); },
+    draw: (s) => {
+      for (const p of s.sparks) {
+        p.ph += p.sp;
+        const a = (Math.sin(p.ph) + 1) / 2;
+        ctx.globalAlpha = a * 0.9;
+        ctx.fillStyle = '#67e8f9';
+        const r = p.r * (0.6 + a);
+        ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.ph * 0.3);
+        ctx.fillRect(-r, -r, r * 2, r * 2);
+        ctx.restore();
+      }
+      ctx.globalAlpha = 1;
+    }
+  };
+
+  // 15. Aurora waves.
+  themes.aurora = {
+    init: (s) => { s.t = 0; },
+    draw: (s) => {
+      s.t += 0.008;
+      ctx.fillStyle = '#050810'; ctx.fillRect(0, 0, W, H);
+      ctx.globalCompositeOperation = 'lighter';
+      for (let band = 0; band < 3; band++) {
+        ctx.beginPath();
+        for (let x = 0; x <= W; x += 16) {
+          const y = H * 0.3 + band * 40 + Math.sin(x * 0.004 + s.t * (2 + band)) * 60 + Math.sin(x * 0.01 + s.t) * 20;
+          x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+        }
+        ctx.strokeStyle = band === 1 ? 'rgba(52,211,153,0.30)' : 'rgba(139,92,246,0.30)';
+        ctx.lineWidth = 26; ctx.stroke();
+      }
+      ctx.globalCompositeOperation = 'source-over';
+    }
+  };
+
+  // 16. Blocks + user images drifting together ("custom blocks").
+  themes.custom = {
+    init: (s) => {
+      s.items = Array.from({ length: 18 }, () => ({
+        tex: pick(BLOCKS), img: null, x: rand(0, W), y: rand(0, H),
+        size: rand(28, 60), vy: rand(-0.7, -0.2), rot: rand(0, 6.28), vr: rand(-0.012, 0.012), wob: rand(0, 6.28)
+      }));
+      // Sprinkle 5 user images among the blocks.
+      const imgs = Object.values(userImages).slice(0, 5);
+      s.items.slice(0, imgs.length).forEach((item, i) => { item.img = imgs[i]; });
+    },
+    draw: (s) => {
+      for (const b of s.items) {
+        b.y += b.vy; b.rot += b.vr; b.wob += 0.02;
+        if (b.y < -70) { b.y = H + 40; b.x = rand(0, W); }
+        const x = b.x + Math.sin(b.wob) * 12;
+        ctx.save(); ctx.translate(x, b.y); ctx.rotate(b.rot); ctx.globalAlpha = 0.9;
+        const size = b.size;
+        if (b.img && b.img.complete && b.img.naturalWidth) {
+          const side = Math.min(b.img.naturalWidth, b.img.naturalHeight);
+          ctx.drawImage(b.img, (b.img.naturalWidth - side) / 2, (b.img.naturalHeight - side) / 2, side, side, -size / 2, -size / 2, size, size);
+        } else {
+          ctx.drawImage(TEX[b.tex], -size / 2, -size / 2, size, size);
+        }
+        ctx.restore();
+      }
+      ctx.globalAlpha = 1;
+    }
+  };
+
+  // ---------------------------------------------------------------- user images
+  const userImages = {}; // name -> Image element (decoded, ready to draw)
+
+  function loadUserImages(names) {
+    for (const name of names) {
+      if (userImages[name]) continue;
+      window.darklauncher.bgLoad(name).then((res) => {
+        if (!res.ok) return;
+        const img = new Image();
+        img.onload = () => { userImages[name] = img; };
+        img.src = res.dataUrl;
+      });
+    }
+  }
+
+  // Full background image layer (kept as a DOM element behind everything).
+  const bgImage = document.createElement('div');
+  bgImage.id = 'bg-image';
+  document.body.insertBefore(bgImage, canvas);
+
+  function applyBackgroundImage(dataUrl) {
+    bgImage.style.backgroundImage = dataUrl ? `url("${dataUrl}")` : '';
+    document.body.classList.toggle('has-bg-image', !!dataUrl);
+  }
+
+  // ---------------------------------------------------------------- loop
+  function startTheme(name, keepState) {
+    if (!themes[name]) name = 'off';
+    currentTheme = name;
+    cancelAnimationFrame(rafId);
+    ctx.clearRect(0, 0, W, H);
+    themeState = themes[name] ? themes[name].init({}) || {} : null;
+    if (name !== 'off') lastFrame = 0, loop(performance.now());
+  }
+
+  function loop(now) {
+    rafId = requestAnimationFrame(loop);
+    if (document.hidden) return;
+    if (now - lastFrame < FRAME_MIN_MS) return;
+    lastFrame = now;
+    const theme = themes[currentTheme];
+    if (!theme) return;
+    // Fade-free clear: themes paint their own background when needed.
+    if (!/^(matrix|warp|lava|underwater|aurora|grid|hills)$/.test(currentTheme)) ctx.clearRect(0, 0, W, H);
+    theme.draw(themeState, now);
+  }
+
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && currentTheme !== 'off') { lastFrame = 0; loop(performance.now()); }
+  });
+
+  // ---------------------------------------------------------------- API
+  window.DarkBG = {
+    setTheme(name) {
+      if (!themes[name]) name = 'off';
+      startTheme(name);
+      if (name === 'custom') window.darklauncher.bgList().then((r) => { if (r.ok) loadUserImages(r.files); });
+    },
+    getTheme() { return currentTheme; },
+    async setBackgroundImage(name) {
+      if (!name) { applyBackgroundImage(''); return; }
+      const res = await window.darklauncher.bgLoad(name);
+      if (res.ok) applyBackgroundImage(res.dataUrl);
+    },
+    refreshImages() {
+      return window.darklauncher.bgList().then((r) => { if (r.ok) loadUserImages(r.files); });
+    },
+    themeNames: Object.keys(themes)
+  };
+
+  resize();
+})();
+
+  </script>
+  <script>
+// ---- Preview mock of window.darklauncher (real renderer.js runs below) ----
+(function () {
+  const VERSIONS = [
+    ['1.21.8', '2026-07-30'], ['1.21.7', '2026-06-30'], ['1.21.6', '2026-05-30'],
+    ['1.21.5', '2026-04-30'], ['1.21.4', '2026-03-30'], ['1.20.6', '2024-04-29'],
+    ['1.20.4', '2023-12-07'], ['1.20.1', '2023-06-12'], ['1.19.4', '2023-03-14'],
+    ['1.18.2', '2022-02-28'], ['1.17.1', '2021-07-06'], ['1.16.5', '2021-01-14'],
+    ['1.12.2', '2017-09-18'], ['1.8.9', '2015-12-09'], ['1.21.8-rc1', '2026-07-28']
+  ].map(([id, releaseDate]) => ({ id, releaseDate, type: /^\d|\d$/.test(id) && !id.includes('-') ? 'release' : 'snapshot' }));
+  VERSIONS.push({ id: '24w40a', releaseDate: '2026-10-02', type: 'snapshot' });
+  const installed = new Set(['1.21.4', '1.20.1', '1.8.9']);
+
+  const listeners = { log: [], progress: [], state: [], window: [] };
+  let running = false;
+
+  const emit = (ev, data) => listeners[ev].forEach(cb => setTimeout(() => cb(data), 0));
+
+  window.darklauncher = {
+    minimize: () => flash('Minimize'),
+    maximize: () => flash('Maximize'),
+    close: () => flash('Close'),
+    isMaximized: async () => false,
+    openExternal: (u) => flash('Open ' + u),
+
+    getSettings: async () => ({
+      memory: 4096, javaPath: '', width: 1280, height: 720,
+      fullscreen: false, keepLauncherOpen: true, lastUsername: 'Dark'
+    }),
+    setSettings: async (patch) => { Object.assign(mockSettings, patch); return { ok: true }; },
+
+    listVersions: async (inc) => ({ ok: true, versions: inc ? VERSIONS : VERSIONS.filter(v => v.type === 'release') }),
+    installedVersions: async () => [...installed],
+
+    installedDetailed: async () => [
+      { id: 'fabric-loader-0.16.5-1.21.4', isFabric: true, complete: true, lastPlayedAt: Date.now() - 3600e3, minutesPlayed: 142, diskBytes: 412e6 },
+      { id: '1.21.4', isFabric: false, complete: true, lastPlayedAt: Date.now() - 86400e3, minutesPlayed: 2190, diskBytes: 388e6 },
+      { id: '1.20.1', isFabric: false, complete: true, lastPlayedAt: null, minutesPlayed: 0, diskBytes: 341e6 },
+      { id: '1.8.9', isFabric: false, complete: true, lastPlayedAt: Date.now() - 30 * 86400e3, minutesPlayed: 8321, diskBytes: 129e6 }
+    ],
+    deleteVersion: async (id) => { installed.delete(id); return { ok: true }; },
+    installFabric: async (game, loader) => {
+      emit('progress', { label: 'Fabric loader...', value: 0.5 });
+      await new Promise(r => setTimeout(r, 800));
+      emit('progress', { label: 'Fabric installed', value: 1 });
+      const id = 'fabric-loader-' + (loader === 'latest' ? '0.16.5' : loader) + '-' + game;
+      installed.add(id);
+      return { ok: true, id };
+    },
+
+    searchMods: async (q) => ({
+      ok: true,
+      results: [
+        { projectId: '1', slug: 'sodium', title: 'Sodium', description: 'A modern rendering engine that greatly improves frame rates and stuttering.', author: 'jellysquid3', downloads: 4200000, iconUrl: '' },
+        { projectId: '2', slug: 'lithium', title: 'Lithium', description: 'Game logic optimizations that do not affect gameplay or mechanics.', author: 'jellysquid3', downloads: 3100000, iconUrl: '' },
+        { projectId: '3', slug: 'fabric-api', title: 'Fabric API', description: 'Essential hooks for modding with Fabric — required by most mods.', author: 'modmuss50', downloads: 9800000, iconUrl: '' },
+        { projectId: '4', slug: 'iris', title: 'Iris', description: 'Shaders pack loader compatible with OptiFine shader packs.', author: 'coderbot', downloads: 2400000, iconUrl: '' }
+      ]
+    }),
+    topMods: async (gv, limit, offset) => {
+      const all = [
+        ['Sodium', 228124617], ['Iris Shaders', 177251985], ['Entity Culling', 167789970],
+        ['Mod Menu', 144857228], ['ImmediatelyFast', 124154597], ['Lithium', 98765432],
+        ['Fabric API', 88000000], ['Ferrite Core', 61000000], ['Cloth Config', 57000000]
+      ];
+      const pool = [];
+      for (let i = 0; i < 250; i++) {
+        const [t, d] = all[i % all.length];
+        pool.push({ projectId: String(i), slug: t.toLowerCase().replace(/ /g, '-') + '-' + i, title: t + (i >= all.length ? ' ' + Math.floor(i / all.length + 1) : ''), description: 'One of the most downloaded Minecraft mods on Modrinth.', author: 'top100', downloads: Math.round(d / (i + 1)), iconUrl: '' });
+      }
+      const start = offset || 0;
+      return { ok: true, results: pool.slice(start, start + (limit || 100)), total: 75890 };
+    },
+    cfStatus: async () => ({ ok: true, hasKey: true }),
+    cfTopMods: async (gv, offset) => {
+      const all = [
+        ['JourneyMap', 42000000], ['Just Enough Items (JEI)', 39000000], ['Mouse Tweaks', 31000000],
+        ['Clumps', 28000000], ['Performant', 19000000], ['AI Improvements', 12000000]
+      ];
+      const pool = [];
+      for (let i = 0; i < 150; i++) {
+        const [t, d] = all[i % all.length];
+        pool.push({ projectId: 'cf' + i, slug: t.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + i, title: t + (i >= all.length ? ' ' + Math.floor(i / all.length + 1) : ''), description: 'CurseForge catalog entry (preview).', author: 'cf', downloads: Math.round(d / (i + 1)), iconUrl: '', source: 'curseforge' });
+      }
+      const start = offset || 0;
+      return { ok: true, results: pool.slice(start, start + 50), total: 100000 };
+    },
+    cfSearchMods: async (q, gv, offset) => ({ ok: true, results: [], total: 0 }),
+    cfInstallMod: async (pid) => { await new Promise(r => setTimeout(r, 500)); return { ok: true, files: ['cf-' + pid + '.jar'] }; },
+    searchShaders: async (q, limit, src, offset) => ({ ok: true, total: 903, offset: offset || 0, results: Array.from({ length: Math.min(limit || 100, 903 - (offset || 0)) }, (_, i) => ({
+      projectId: 's' + ((offset || 0) + i), slug: 'pack-' + ((offset || 0) + i), title: 'Shader Pack #' + ((offset || 0) + i + 1),
+      description: 'Paged shader catalog preview entry.', author: 'preview', downloads: 900000 - i * 1000, iconUrl: ''
+    })) }),
+    topShaders: async (limit, src, offset) => ({ ok: true, total: 903, results: Array.from({ length: Math.min(limit || 100, 903 - (offset || 0)) }, (_, i) => ({
+      projectId: 's' + ((offset || 0) + i), slug: 'pack-' + ((offset || 0) + i), title: 'Shader Pack #' + ((offset || 0) + i + 1),
+      description: 'Paged shader catalog preview entry.', author: 'preview', downloads: 900000 - ((offset || 0) + i) * 1000, iconUrl: ''
+    })) }),
+    listShaders: async () => [
+      { name: 'ComplementaryReimagined_r5.9.3.zip', size: 5242880 }
+    ],
+    installShader: async (slug) => { await new Promise(r => setTimeout(r, 600)); return { ok: true, file: slug + '-r5.9.3.zip' }; },
+    removeShader: async () => ({ ok: true }),
+    installMod: async (slug) => { await new Promise(r => setTimeout(r, 700)); return { ok: true, files: [slug + '-1.0.0.jar'] }; },
+    listMods: async () => [
+      { name: 'sodium-0.6.0.jar', size: 1048576 },
+      { name: 'fabric-api-0.100.0.jar', size: 2097152 }
+    ],
+    removeMod: async () => ({ ok: true }),
+
+    listServers: async () => [
+      { id: 'srv_hypixel', name: 'Hypixel', host: 'mc.hypixel.net', port: 25565 },
+      { id: 'srv_custom', name: 'My Private SMP', host: 'play.example.com', port: 25577 }
+    ],
+    addServer: async (s) => ({ ok: true, server: Object.assign({ id: 'srv_' + Date.now(), port: 25565 }, s) }),
+    removeServer: async () => ({ ok: true }),
+
+    activeAccount: async () => ({ name: 'Dark', type: 'offline', uuid: 'x' }),
+    listAccounts: async () => [
+      { name: 'Dark', type: 'offline', uuid: 'x' },
+      { name: 'Notch', type: 'msa', uuid: 'y' }
+    ],
+    switchAccount: async (uuid) => ({ ok: true, account: { name: uuid === 'y' ? 'Notch' : 'Dark', type: uuid === 'y' ? 'msa' : 'offline' } }),
+    signout: async () => ({ ok: true }),
+    loginOffline: async (name) => ({ name, type: 'offline', uuid: 'x' }),
+    msaStart: async () => ({ ok: true, userCode: 'DKLG-8888', verificationUri: 'https://microsoft.com/link', interval: 2 }),
+    msaPoll: async () => ({ done: false }),
+
+    launch: async (p) => {
+      running = true;
+      const files = ['client.jar','gson-2.10.1.jar','guava-32.0.1.jar','lwjgl-3.3.3.jar',
+        'jopt-simple-5.0.4.jar','icu4j-71.1.jar','asm-9.5.jar','assets/indexes/17.json'];
+      let i = 0;
+      const step = () => {
+        if (i < files.length) {
+          i++;
+          emit('progress', { label: 'Downloading ' + files[i - 1], value: i / (files.length + 2) });
+          setTimeout(step, 160);
+        } else {
+          emit('progress', { label: 'Launching game...', value: 1 });
+          emit('state', 'running');
+          emit('log', '[launcher] Spawning java -Xmx4096M -cp ... net.minecraft.client.main.Main');
+          emit('log', '[12:00:01] [Render thread/INFO]: Setting user: Dark');
+          emit('log', '[12:00:02] [Render thread/INFO]: Backend library: LWJGL version 3.3.3');
+          emit('log', '[12:00:04] [Render thread/INFO]: Sound engine started');
+          flash('Minecraft launched (' + p.versionId + ')');
+        }
+      };
+      setTimeout(step, 200);
+      return { ok: true };
+    },
+    stopGame: async () => { running = false; emit('state', 'stopped'); return { ok: true }; },
+    isRunning: async () => running,
+    openGameFolder: () => flash('Opening game folder'),
+
+    getAppInfo: async () => ({
+      version: '1.1.0', electron: '33.0.0 (preview)', node: '20.x',
+      platform: 'win32', dataDir: 'C:\…\appdata (preview)',
+      logFile: 'C:\…\appdata\logs\darklauncher.log'
+    }),
+    openLogs: () => flash('Opening log folder'),
+
+    onLog: (cb) => listeners.log.push(cb),
+    onProgress: (cb) => listeners.progress.push(cb),
+    onState: (cb) => listeners.state.push(cb),
+    onWindow: (cb) => listeners.window.push(cb)
+  };
+
+  // Simulate an error-rich console stream so the error-code panel is reviewable.
+  setTimeout(() => {
+    emit('log', '[launcher] Spawning java -Xmx4096M -cp ... net.minecraft.client.main.Main');
+    emit('log', '[12:00:01] [Render thread/INFO]: Setting user: Dark');
+    emit('log', '[12:00:02] [Render thread/INFO]: Backend library: LWJGL version 3.3.3');
+    emit('log', '[12:00:03] [Render thread/ERROR]: java.lang.OutOfMemoryError: Java heap space');
+    emit('log', '[12:00:04] [Render thread/WARN]: Mod sodium may not support this loader version');
+    emit('log', 'ERROR: Game crashed with exit code 1');
+  }, 900);
+
+  function flash(t) {
+    const el = document.createElement('div');
+    el.textContent = t;
+    el.style.cssText = 'position:fixed;top:52px;right:16px;background:#8b5cf6;color:#fff;padding:6px 12px;border-radius:8px;font-size:12px;z-index:100;box-shadow:0 4px 20px rgba(139,92,246,.5)';
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 1400);
+  }
+
+  const mockSettings = {};
+})();
+</script>
+  <script>'use strict';
+
+// Renderer logic: navigation, version list, launch flow, settings, accounts.
+
+const api = window.darklauncher;
+
+const $ = (id) => document.getElementById(id);
+
+// ---------------------------------------------------------------- toasts
+function toast(message, type = 'info', ms = 3200) {
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.textContent = message;
+  $('toasts').appendChild(el);
+  requestAnimationFrame(() => el.classList.add('show'));
+  setTimeout(() => {
+    el.classList.remove('show');
+    setTimeout(() => el.remove(), 300);
+  }, ms);
+}
+const state = {
+  versions: [],
+  installedSet: new Set(),
+  selectedVersion: localStorage.getItem('dl.version') || '',
+  installing: false,
+  running: false
+};
+
+// ---------------------------------------------------------------- navigation
+document.querySelectorAll('.nav-btn').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.nav-btn').forEach((b) => b.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('.page').forEach((p) => p.classList.remove('active'));
+    $(`page-${btn.dataset.page}`).classList.add('active');
+    if (btn.dataset.page === 'shaders') {
+      // Populate the shaders page on first visit.
+      if (!$('shader-results').children.length) loadShaders('top');
+      loadShaderFiles();
+    }
+  });
+});
+
+// ---------------------------------------------------------------- window controls
+$('btn-min').addEventListener('click', () => api.minimize());
+$('btn-max').addEventListener('click', () => api.maximize());
+$('btn-close').addEventListener('click', () => api.close());
+api.onWindow((s) => {
+  $('btn-max').innerHTML = s === 'maximized' ? '&#x2922;' : '&#x25A1;';
+});
+
+// ---------------------------------------------------------------- account display
+const faceCache = new Map();
+
+function faceUrl(name, size) {
+  return `https://minotar.net/helm/${encodeURIComponent(name)}/${size}`;
+}
+
+function setFace(imgEl, name, size) {
+  if (!imgEl) return; // element may not exist on a redesigned page
+  const url = faceUrl(name, size);
+  imgEl.style.background = '';
+  imgEl.onerror = () => {
+    // Offline fallback: colored initial tile, no broken image.
+    imgEl.removeAttribute('src');
+    const hue = [...name].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7);
+    imgEl.style.background = `linear-gradient(135deg, hsl(${hue},60%,40%), hsl(${(hue + 40) % 360},60%,30%))`;
+    imgEl.alt = name.slice(0, 1).toUpperCase();
+  };
+  if (imgEl.src !== url) imgEl.src = url;
+}
+
+function renderAccount(acc) {
+  const name = acc ? acc.name : 'Player';
+  const type = acc ? (acc.type === 'msa' ? 'Microsoft' : 'Offline') : 'Offline';
+  $('account-name').textContent = name;
+  $('account-type').textContent = type;
+  // Profile card on Home mirrors the sidebar chip.
+  const pn = $('profile-name'), pt = $('profile-type');
+  if (pn) pn.textContent = name;
+  if (pt) pt.textContent = type;
+  setFace($('big-face'), name, 96);
+  setFace($('account-face'), name, 32);
+}
+
+// ---------------------------------------------------------------- versions
+async function loadVersions() {
+  const list = $('version-list');
+  list.innerHTML = '<div class="muted" style="padding:8px">Loading versions...</div>';
+  const res = await api.listVersions($('show-snapshots').checked);
+  if (!res.ok) {
+    list.innerHTML = `<div class="muted" style="padding:8px">Failed to load: ${res.error}</div>`;
+    return;
+  }
+  state.versions = res.versions;
+  const installed = await api.installedVersions();
+  state.installedSet = new Set(installed);
+  renderVersionList();
+}
+
+function renderVersionList() {
+  const list = $('version-list');
+  const query = $('version-search').value.trim().toLowerCase();
+  const shown = state.versions.filter(v => v.id.toLowerCase().includes(query)).slice(0, 200);
+
+  list.innerHTML = '';
+  for (const v of shown) {
+    const el = document.createElement('div');
+    el.className = 'ver-item' + (v.id === state.selectedVersion ? ' selected' : '');
+    el.innerHTML = `
+      <span class="v-main"><span class="v-id">${v.id}</span>${v.releaseDate ? `<span class="v-date">${v.releaseDate}</span>` : ''}</span>
+      <span style="display:flex;align-items:center">
+        ${state.installedSet.has(v.id) ? '<span class="v-installed">installed</span>' : ''}
+        <span class="v-type ${v.type}">${v.type}</span>
+      </span>`;
+    el.addEventListener('click', () => {
+      state.selectedVersion = v.id;
+      localStorage.setItem('dl.version', v.id);
+      document.querySelectorAll('.ver-item').forEach(x => x.classList.remove('selected'));
+      el.classList.add('selected');
+      setStatus(`Selected ${v.id}`);
+    });
+    list.appendChild(el);
+  }
+  if (!shown.length) {
+    list.innerHTML = '<div class="muted" style="padding:8px">No versions match.</div>';
+  }
+}
+
+$('show-snapshots').addEventListener('change', loadVersions);
+$('version-search').addEventListener('input', () => renderVersionList());
+
+// ---------------------------------------------------------------- launch
+function setStatus(msg) { $('play-status').textContent = msg; }
+
+function setPlayButtons() {
+  $('btn-play').disabled = state.installing || state.running;
+  $('btn-stop').classList.toggle('hidden', !state.running);
+}
+
+$('btn-play').addEventListener('click', async () => {
+  if (state.installing || state.running) return;
+  if (!state.selectedVersion) {
+    setStatus('Pick a version first!');
+    return;
+  }
+  state.installing = true;
+  setPlayButtons();
+  $('progress-wrap').classList.remove('hidden');
+  setStatus('Launching...');
+  $('progress-fill').style.width = '0%';
+
+  const serverId = $('join-server').value || undefined;
+  const res = await api.launch({ versionId: state.selectedVersion, serverId });
+  if (!res.ok) {
+    setStatus(`Failed: ${res.error}`);
+    toast(`Launch failed: ${res.error}`, 'error', 6000);
+    state.installing = false;
+    setPlayButtons();
+  }
+});
+
+$('btn-stop').addEventListener('click', async () => {
+  await api.stopGame();
+  setStatus('Stopping Minecraft...');
+});
+
+api.onProgress((p) => {
+  $('progress-label').textContent = p.label;
+  $('progress-fill').style.width = `${Math.round(p.value * 100)}%`;
+  if (p.value >= 1) {
+    setTimeout(() => $('progress-wrap').classList.add('hidden'), 1200);
+  }
+});
+
+// ---------------------------------------------------------------- console: error codes
+// Known Minecraft crash signatures -> plain-language explanations + fixes.
+// Ordered by specificity; first match wins.
+const ERROR_CODES = [
+  { re: /java\.lang\.OutOfMemoryError/i, code: 'java.lang.OutOfMemoryError',
+    why: 'The JVM ran out of RAM. Shaders/mods need more memory than allocated.',
+    fix: 'Settings → Memory slider to 6-8 GB. Shader+mod setups often need 6 GB+.' },
+  { re: /UnsupportedClassVersionError.*class file version (\d+)/i, code: 'UnsupportedClassVersionError',
+    why: 'A mod or library was built for a newer Java than the game is using.',
+    fix: 'Delete the custom Java path in Settings (auto-download will pick the right runtime), or install the Java version the mod requires.' },
+  { re: /GL_(ARB|VERSION)|LWJGL.*OpenGL|Pixel format not accelerated/i, code: 'OpenGL/LWJGL error',
+    why: 'Graphics driver could not provide OpenGL (common on VMs/remote desktop/old drivers).',
+    fix: 'Update your GPU driver. On remote desktop/VM, run the game on the physical machine.' },
+  { re: /Failed to (load|verify) (a )?libraries|Could not (find or )?load main class net\.fabricmc/i, code: 'Fabric libraries missing',
+    why: 'Fabric loader libraries are missing or corrupt in the instance.',
+    fix: 'Versions → delete the Fabric instance → reinstall Fabric.' },
+  { re: /NoSuchMethodError|NoClassDefFoundError.*(fabric|modrinth)/i, code: 'Mod/loader version mismatch',
+    why: 'A mod version does not match the installed Fabric loader or another mod.',
+    fix: 'Mods page → remove the mod → reinstall its latest build for your exact Minecraft version.' },
+  { re: /Access is denied|Permission denied/i, code: 'Permission denied',
+    why: 'Windows blocked a file the game needs (antivirus or OneDrive sync lock).',
+    fix: 'Add the launcher folder to antivirus exclusions; pause OneDrive sync for it.' },
+  { re: /The system cannot find the (path|file) specified/i, code: 'File not found',
+    why: 'A required file (java, jar, natives) is missing from disk.',
+    fix: 'Versions → delete the version → launch again so it re-downloads fresh.' },
+  { re: /exit code (-?\d+)/i, code: 'Non-zero exit code',
+    why: 'The game process ended abnormally. The lines above usually show the real cause.',
+    fix: 'Scroll up to the first red ERROR line and match it against this list.' },
+  { re: /Connection (refused|timed out)|Unknown host|Failed to connect to (the )?server/i, code: 'Server connection failed',
+    why: 'The server is offline, the address is wrong, or your network blocks it.',
+    fix: 'Check the server address/port in Servers, and that the server is online.' },
+  { re: /Invalid session|Failed to verify username/i, code: 'Invalid session',
+    why: 'Online servers reject offline accounts. This is expected without a real account.',
+    fix: 'Use offline-friendly servers, or sign in with a Microsoft account.' }
+];
+
+function analyzeCrashLines(lines) {
+  const joined = lines.join('\n');
+  const found = [];
+  for (const e of ERROR_CODES) {
+    if (e.re.test(joined)) found.push(e);
+    if (found.length >= 3) break;
+  }
+  return found;
+}
+
+function renderCrashHints(matches) {
+  const wrap = $('crash-hints');
+  if (!matches.length) {
+    wrap.innerHTML = '<span class="muted">No known crash patterns in the recent output.</span>';
+    return;
+  }
+  wrap.innerHTML = matches.map((m) => `
+    <div class="crash-hint">
+      <b>${esc(m.code)}</b><br/>${esc(m.why)}<br/>
+      <span class="muted">Fix: ${esc(m.fix)}</span>
+    </div>`).join('');
+}
+
+// Live analysis: whenever an error-looking line arrives, analyze the last 200.
+function analyzeRecentConsole() {
+  const lines = [...document.querySelectorAll('#console > span')]
+    .map((el) => el.textContent).slice(-200);
+  renderCrashHints(analyzeCrashLines(lines));
+}
+
+function applyConsoleFilter() {
+  const q = $('console-filter').value.trim().toLowerCase();
+  const errorsOnly = $('console-errors-only').checked;
+  document.querySelectorAll('#console > span').forEach((el) => {
+    const isError = /ERROR|FATAL|Exception/i.test(el.textContent);
+    const okQ = !q || el.textContent.toLowerCase().includes(q);
+    const okE = !errorsOnly || isError;
+    el.classList.toggle('hidden-by-filter', !(okQ && okE));
+  });
+}
+
+$('console-filter').addEventListener('input', applyConsoleFilter);
+$('console-errors-only').addEventListener('change', applyConsoleFilter);
+$('btn-copy-errors').addEventListener('click', () => {
+  const errs = [...document.querySelectorAll('#console > span')]
+    .filter((el) => /ERROR|FATAL|Exception/i.test(el.textContent))
+    .map((el) => el.textContent.trim()).join('\n');
+  if (!errs) { toast('No error lines to copy', 'error'); return; }
+  navigator.clipboard.writeText(errs).then(
+    () => toast(`Copied ${errs.split('\n').length} error lines`, 'ok'),
+    () => toast('Clipboard blocked by the system', 'error')
+  );
+});
+$('btn-crash-analysis').addEventListener('click', analyzeRecentConsole);
+
+api.onLog((msg) => {
+  const con = $('console');
+  const line = document.createElement('span');
+  line.className = 'log-line';
+  // Color-code log lines for quick scanning.
+  if (/ERROR|FATAL|Exception in/i.test(msg)) line.classList.add('log-err');
+  else if (/WARN/i.test(msg)) line.classList.add('log-warn');
+  else line.classList.add('log-sys');
+  line.textContent = msg + '\n';
+  // Respect active filters on append too.
+  const q = $('console-filter').value.trim().toLowerCase();
+  const errorsOnly = $('console-errors-only').checked;
+  const isError = /ERROR|FATAL|Exception/i.test(msg);
+  if ((q && !msg.toLowerCase().includes(q)) || (errorsOnly && !isError)) {
+    line.classList.add('hidden-by-filter');
+  }
+  con.appendChild(line);
+  // Keep memory sane: cap the console at 2500 lines.
+  while (con.children.length > 2500) con.removeChild(con.firstChild);
+  con.scrollTop = con.scrollHeight;
+  if (isError) analyzeRecentConsole();
+  if (msg.startsWith('ERROR:')) { setStatus(msg); toast(msg.slice(7), 'error', 6000); }
+});
+
+api.onState((s) => {
+  if (s === 'running') {
+    state.running = true;
+    state.installing = false;
+    setStatus('Minecraft is running.');
+    toast('Minecraft launched! Have fun.', 'ok');
+    // Auto-hide when the user opted out of keeping the launcher open.
+    api.getSettings().then((st) => {
+      if (!st.keepLauncherOpen && api.hideToTray) api.hideToTray();
+    });
+  }
+  if (s === 'stopped') {
+    if (state.running) toast('Game closed.');
+    state.running = false;
+    state.installing = false;
+    setStatus('Game closed.');
+  }
+  setPlayButtons();
+});
+
+// ---------------------------------------------------------------- accounts
+function refreshAccountsPanel() {
+  api.listAccounts().then((accounts) => {
+    const wrap = $('account-list');
+    wrap.innerHTML = '';
+    if (!accounts.length) {
+      wrap.innerHTML = '<p class="muted">No saved accounts. Sign in below.</p>';
+      return;
+    }
+    for (const acc of accounts) {
+      const row = document.createElement('div');
+      row.className = 'account-row';
+      row.innerHTML = `
+        <span class="acc-dot ${acc.type}"></span>
+        <span class="acc-name">${acc.name}</span>
+        <span class="acc-tag">${acc.type === 'msa' ? 'Microsoft' : 'Offline'}</span>
+        <button class="btn small acc-use">Use</button>`;
+      row.querySelector('.acc-use').addEventListener('click', async () => {
+        const res = await api.switchAccount(acc.uuid);
+        if (res.ok) {
+          renderAccount(res.account);
+          setStatus(`Switched to ${res.account.name}`);
+          refreshAccountsPanel();
+        }
+      });
+      wrap.appendChild(row);
+    }
+  });
+}
+
+$('btn-offline').addEventListener('click', async () => {
+  const name = $('offline-name').value.trim() || 'Player';
+  const acc = await api.loginOffline(name);
+  renderAccount(acc);
+  refreshAccountsPanel();
+  setStatus(`Switched to offline account: ${name}`);
+});
+
+let msaInterval = null;
+
+function stopMsaPolling() {
+  if (msaInterval) { clearInterval(msaInterval); msaInterval = null; }
+}
+
+$('btn-msa').addEventListener('click', async () => {
+  stopMsaPolling();
+  const start = await api.msaStart();
+  $('msa-box').classList.remove('hidden');
+  if (!start.ok) {
+    $('msa-status').textContent = `Error: ${start.error}`;
+    return;
+  }
+  $('msa-code').textContent = start.userCode;
+  $('msa-uri').textContent = start.verificationUri;
+  $('msa-uri').onclick = (e) => {
+    e.preventDefault();
+    api.openExternal(start.verificationUri);
+  };
+  $('msa-status').textContent = 'Waiting for approval...';
+
+  msaInterval = setInterval(async () => {
+    const poll = await api.msaPoll();
+    if (poll.done) {
+      stopMsaPolling();
+      if (poll.error) {
+        $('msa-status').textContent = `Error: ${poll.error}`;
+      } else {
+        $('msa-status').textContent = `Signed in as ${poll.account.name}!`;
+        renderAccount(poll.account);
+        refreshAccountsPanel();
+      }
+    }
+  }, (start.interval || 5) * 1000);
+});
+
+$('btn-signout').addEventListener('click', async () => {
+  stopMsaPolling();
+  await api.signout();
+  renderAccount(null);
+  refreshAccountsPanel();
+  setStatus('Signed out.');
+});
+
+$('btn-open-folder').addEventListener('click', () => api.openGameFolder());
+
+// ---------------------------------------------------------------- settings
+const BG_THEMES = [
+  ['off', 'Off (plain dark)'],
+  ['blocks', 'Minecraft blocks floating'],
+  ['custom', 'Custom blocks (your images!)'],
+  ['redmoon', 'Red moon (Akatsuki)'],
+  ['warp', 'Starfield warp'],
+  ['matrix', 'Digital rain'],
+  ['lava', 'Lava lamp'],
+  ['hills', 'Night hills'],
+  ['creeper', 'Creeper faces'],
+  ['grid', 'Synthwave grid'],
+  ['snow', 'Snowfall'],
+  ['embers', 'Rising embers'],
+  ['underwater', 'Underwater'],
+  ['constellation', 'Constellation'],
+  ['tntrain', 'TNT rain'],
+  ['diamond', 'Diamond shimmer'],
+  ['aurora', 'Aurora waves']
+];
+
+async function initBackgroundPanel() {
+  const sel = $('bg-theme');
+  sel.innerHTML = BG_THEMES.map(([v, label]) => `<option value="${v}">${label}</option>`).join('');
+  const s = await api.getSettings();
+  sel.value = s.backgroundTheme || 'blocks';
+  if (window.DarkBG) {
+    DarkBG.setTheme(sel.value);
+    if (s.backgroundImage) DarkBG.setBackgroundImage(s.backgroundImage);
+  }
+  sel.addEventListener('change', async () => {
+    if (window.DarkBG) DarkBG.setTheme(sel.value);
+    await api.setSettings({ backgroundTheme: sel.value });
+  });
+  renderBgImages();
+}
+
+async function renderBgImages() {
+  const wrap = $('bg-images');
+  const res = await api.bgList();
+  if (!res.ok || !res.files.length) {
+    wrap.innerHTML = '<p class="muted">No images yet — add one and use it as the background or in Custom blocks.</p>';
+    return;
+  }
+  const s = await api.getSettings();
+  wrap.innerHTML = '';
+  for (const name of res.files) {
+    const row = document.createElement('div');
+    row.className = 'account-row';
+    const isBg = s.backgroundImage === name;
+    row.innerHTML = `
+      <span class="acc-name">${esc(name)}${isBg ? ' · <b>background</b>' : ''}</span>
+      <span style="display:flex;gap:6px">
+        <button class="btn small bg-use">Use as background</button>
+        <button class="btn small danger-soft bg-del">Remove</button>
+      </span>`;
+    row.querySelector('.bg-use').addEventListener('click', async () => {
+      if (window.DarkBG) await DarkBG.setBackgroundImage(name);
+      await api.setSettings({ backgroundImage: s.backgroundImage === name ? '' : name });
+      renderBgImages();
+      toast('Background image updated', 'ok');
+    });
+    row.querySelector('.bg-del').addEventListener('click', async () => {
+      await api.bgDelete(name);
+      renderBgImages();
+    });
+    wrap.appendChild(row);
+  }
+}
+
+$('btn-bg-add-image').addEventListener('click', async () => {
+  const res = await api.bgChooseImage();
+  if (res.ok) { renderBgImages(); toast('Image added — pick "Custom blocks" to float it!', 'ok', 5000); }
+});
+
+async function loadSettings() {
+  const s = await api.getSettings();
+  $('set-memory').value = s.memory;
+  $('mem-label').textContent = `${s.memory} MB`;
+  $('set-java').value = s.javaPath || '';
+  $('set-cfkey').value = s.curseforgeKey || '';
+  $('set-width').value = s.width;
+  $('set-height').value = s.height;
+  $('set-fullscreen').checked = !!s.fullscreen;
+  $('set-keepopen').checked = !!s.keepLauncherOpen;
+  $('set-closetotray').checked = s.closeToTray !== false;
+  if (s.lastUsername && !$('offline-name').value) $('offline-name').value = s.lastUsername;
+}
+
+$('set-memory').addEventListener('input', () => {
+  $('mem-label').textContent = `${$('set-memory').value} MB`;
+});
+
+$('btn-save-settings').addEventListener('click', async () => {
+  await api.setSettings({
+    memory: parseInt($('set-memory').value, 10) || 4096,
+    javaPath: $('set-java').value.trim(),
+    curseforgeKey: $('set-cfkey').value.trim(),
+    width: parseInt($('set-width').value, 10) || 1280,
+    height: parseInt($('set-height').value, 10) || 720,
+    fullscreen: $('set-fullscreen').checked,
+    keepLauncherOpen: $('set-keepopen').checked,
+    closeToTray: $('set-closetotray').checked
+  });
+  $('btn-save-settings').textContent = 'Saved!';
+  setTimeout(() => { $('btn-save-settings').textContent = 'Save Settings'; }, 1500);
+});
+
+$('btn-clear-console').addEventListener('click', () => {
+  $('console').textContent = '';
+  $('crash-hints').innerHTML = '<span class="muted">Launch the game — common crash codes will be explained here automatically.</span>';
+});
+
+// ---------------------------------------------------------------- about panel
+async function loadAbout() {
+  try {
+    const info = await api.getAppInfo();
+    $('about-version').textContent = `Darklauncher v${info.version}`;
+    $('about-detail').textContent = `Electron ${info.electron} · ${info.platform}`;
+    $('about-datadir').textContent = info.dataDir;
+    $('about-logfile').textContent = info.logFile || '—';
+  } catch (_) { /* preview/mock */ }
+}
+
+$('btn-open-logs').addEventListener('click', () => api.openLogs());
+
+// ---------------------------------------------------------------- version management page
+function humanBytes(n) {
+  if (!Number.isFinite(n) || n <= 0) return '0 B';
+  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.min(units.length - 1, Math.floor(Math.log(n) / Math.log(1024)));
+  return `${(n / Math.pow(1024, i)).toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
+}
+
+async function loadVersionsPage() {
+  refreshFabricGamePicker();
+  const wrap = $('versions-table');
+  wrap.innerHTML = '<p class="muted">Loading...</p>';
+  const rows = await api.installedDetailed();
+  if (!rows.length) {
+    wrap.innerHTML = '<p class="muted">Nothing installed yet — launch a version and it will appear here.</p>';
+    return;
+  }
+  wrap.innerHTML = '';
+  for (const v of rows) {
+    const el = document.createElement('div');
+    el.className = 'version-row';
+    const played = v.lastPlayedAt
+      ? new Date(v.lastPlayedAt).toLocaleDateString() + ' · ' + (v.minutesPlayed || 0) + ' min'
+      : 'never played';
+    el.innerHTML = `
+      <span class="vr-id">${v.id}${v.isFabric ? ' <span class="v-tag">Fabric</span>' : ''}</span>
+      <span class="muted">${played}</span>
+      <span class="muted">${humanBytes(v.diskBytes)}</span>
+      <button class="btn small danger-soft vr-del">Delete</button>`;
+    el.querySelector('.vr-del').addEventListener('click', async () => {
+      if (!confirm(`Delete ${v.id} from disk?`)) return;
+      const res = await api.deleteVersion(v.id);
+      if (res.ok) { toast(`Deleted ${v.id}`, 'ok'); loadVersionsPage(); loadVersions(); }
+      else toast(res.error || 'Delete failed', 'error');
+    });
+    wrap.appendChild(el);
+  }
+}
+
+$('btn-refresh-versions').addEventListener('click', loadVersionsPage);
+
+// Populate the Fabric installer's game-version picker from the live manifest
+// (releases first, then snapshots). Cached by the backend, so this is cheap.
+async function refreshFabricGamePicker() {
+  const sel = $('fabric-game');
+  const prev = sel.value;
+  const res = await api.listVersions(false);
+  if (!res.ok || !res.versions.length) return;
+  sel.innerHTML = '';
+  for (const v of res.versions.slice(0, 200)) {
+    const opt = document.createElement('option');
+    opt.value = v.id;
+    opt.textContent = `${v.id}${v.releaseDate ? '  (' + v.releaseDate + ')' : ''}`;
+    sel.appendChild(opt);
+  }
+  if (prev) sel.value = prev;
+}
+
+$('btn-fabric-install').addEventListener('click', async () => {
+  const game = ($('fabric-game').value || '').trim();
+  const loader = $('fabric-loader').value.trim() || 'latest';
+  if (!/^\d+\.\d+(\.\d+)?(-[\w.]+)?$/.test(game)) {
+    toast('Pick a Minecraft version from the list', 'error');
+    return;
+  }
+  const btn = $('btn-fabric-install');
+  btn.disabled = true;
+  btn.textContent = 'Installing...';
+  $('progress-wrap').classList.remove('hidden');
+  $('progress-fill').style.width = '0%';
+  const res = await api.installFabric(game, loader);
+  btn.disabled = false;
+  btn.textContent = 'Install Fabric';
+  if (res.ok) {
+    toast(`Fabric installed: ${res.id}`, 'ok', 5000);
+    setStatus(`Fabric ready: ${res.id}`);
+    await loadVersions();
+    loadVersionsPage();
+    refreshInstanceSelects();
+  } else {
+    toast(`Fabric failed: ${res.error}`, 'error', 6000);
+  }
+});
+
+// ---------------------------------------------------------------- mods page
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[c]));
+}
+
+async function refreshInstanceSelects() {
+  const rows = await api.installedDetailed();
+  const fabricOnly = rows.filter(v => v.isFabric);
+  // Mods page instance picker
+  const sel = $('mods-instance');
+  const prev = sel.value;
+  sel.innerHTML = '';
+  if (!fabricOnly.length) {
+    sel.innerHTML = '<option value="">— Install Fabric first —</option>';
+  } else {
+    for (const v of fabricOnly) {
+      const opt = document.createElement('option');
+      opt.value = v.id;
+      opt.textContent = v.id;
+      sel.appendChild(opt);
+    }
+    if (prev) sel.value = prev;
+  }
+  // Home page join-server picker
+  const servers = await api.listServers();
+  const js = $('join-server');
+  const prevSrv = js.value;
+  js.innerHTML = '<option value="">Singleplayer / server browser</option>';
+  for (const s of servers) {
+    const opt = document.createElement('option');
+    opt.value = s.id;
+    opt.textContent = `Join ${s.name} (${s.host})`;
+    js.appendChild(opt);
+  }
+  if (prevSrv) js.value = prevSrv;
+  // Populate installed-mods panel now that the instance picker is ready.
+  loadModsInstalled();
+}
+
+async function searchMods() { loadModsPage('search', { reset: true }); }
+
+$('btn-mods-search').addEventListener('click', searchMods);
+$('mods-search').addEventListener('keydown', (e) => { if (e.key === 'Enter') searchMods(); });
+
+// ------------------------------------------------------------ catalog state
+// Shared state for the mods list: which query produced the current cards,
+// how deep we have paged, and the Modrinth-reported total.
+const modsList = { mode: null, gameVersion: null, shown: 0, total: 0, busy: false };
+const CATALOG_MAX = 10000;
+
+function catalogCap() { return modsSource() === 'curseforge' ? 10000 : 100000; }
+
+function modsCountLabel() {
+  const cap = catalogCap();
+  $('mods-count').textContent = modsList.total
+    ? `${modsList.shown} / ${Math.min(modsList.total, cap).toLocaleString()} mods`
+    : '';
+  $('btn-mods-more').classList.toggle('hidden',
+    !modsList.mode || modsList.shown >= Math.min(modsList.total, cap) || modsList.shown >= cap);
+}
+
+async function fetchModsPage(mode, offset) {
+  const gameVersion = ($('mods-instance').value || '').replace(/^fabric-loader-[\w.]+-/, '');
+  if (modsSource() === 'curseforge') {
+    // CurseForge: 50/page, sorted by total downloads.
+    return mode === 'top'
+      ? api.cfTopMods(gameVersion || null, offset)
+      : api.cfSearchMods($('mods-search').value.trim(), gameVersion || null, offset);
+  }
+  if (mode === 'top') {
+    return api.topMods(gameVersion || null, 100, offset);
+  }
+  const q = $('mods-search').value.trim();
+  return api.searchMods(q, gameVersion || null, { limit: 100, offset });
+}
+
+function modsSource() { return $('mods-source').value; }
+function shaderSource() { return $('shader-source').value; }
+
+async function loadModsPage(mode, { reset } = { reset: true }) {
+  if (modsList.busy) return;
+  modsList.busy = true;
+  const wrap = $('mods-results');
+  const offset = reset ? 0 : modsList.shown;
+  if (reset) { wrap.innerHTML = '<p class="muted">Loading Modrinth catalog...</p>'; }
+  const res = await fetchModsPage(mode, offset);
+  modsList.busy = false;
+  if (!res.ok) {
+    if (reset) wrap.innerHTML = `<p class="muted">Failed: ${esc(res.error)}</p>`;
+    return;
+  }
+  if (reset) { wrap.innerHTML = ''; modsList.total = res.total || 0; }
+  modsList.mode = mode;
+  modsList.source = modsSource();
+  modsList.gameVersion = ($('mods-instance').value || '').replace(/^fabric-loader-[\w.]+-/, '');
+  modsList.shown = offset + res.results.length;
+  if (reset && !res.results.length) {
+    wrap.innerHTML = '<p class="muted">No mods found.</p>';
+    modsCountLabel();
+    return;
+  }
+  renderModResults(res.results, mode === 'top' && reset);
+  modsCountLabel();
+}
+
+// Top 100 most-downloaded mods for the selected instance's game version.
+function showTopMods() { loadModsPage('top', { reset: true }); }
+
+$('btn-mods-more').addEventListener('click', () => loadModsPage(modsList.mode, { reset: false }));
+
+// Switching catalog source resets the list and reveals the CF key hint if needed.
+$('mods-source').addEventListener('change', async () => {
+  const cf = modsSource() === 'curseforge';
+  const st = cf ? await api.cfStatus() : { hasKey: true };
+  $('cf-hint').classList.toggle('hidden', !cf || st.hasKey);
+  loadModsPage('top', { reset: true });
+});
+
+// Shared card renderer for mods and shader cards. `kind` picks the install flow.
+function sourceOf(m, fallback) { return m.source === 'curseforge' ? 'curseforge' : fallback; }
+
+// Shared card renderer for search results and the Top 100 list. Ranked only
+// applies to the first page of the Top list (the offset is added for more).
+function renderModResults(results, ranked) {
+  const wrap = $('mods-results');
+  results.forEach((m, i) => {
+    const rank = ranked ? i + 1 : (modsList.mode === 'top' ? modsList.shown - results.length + i + 1 : 0);
+    const el = document.createElement('div');
+    el.className = 'mod-card';
+    el.innerHTML = `
+      <div class="mod-head">
+        <img class="mod-icon" src="${esc(m.iconUrl)}" onerror="this.style.visibility='hidden'" />
+        <div>
+          <div class="mod-title">${rank ? `#${rank} · ` : ''}${esc(m.title)}</div>
+          <div class="muted mod-desc">${esc(m.description)}</div>
+          <div class="muted mod-meta">by ${esc(m.author)} · ${m.downloads.toLocaleString()} downloads</div>
+        </div>
+      </div>
+      <button class="btn small mod-install">Install</button>`;
+    el.querySelector('.mod-install').addEventListener('click', async (e) => {
+      const fabricId = $('mods-instance').value;
+      if (!fabricId) { toast('Pick a Fabric instance first', 'error'); return; }
+      const btn = e.target;
+      btn.disabled = true;
+      btn.textContent = 'Installing...';
+      $('progress-wrap').classList.remove('hidden');
+      const game = fabricId.replace(/^fabric-loader-[\w.]+-/, '');
+      const res2 = sourceOf(m, modsSource()) === 'curseforge'
+        ? await api.cfInstallMod(m.projectId, game, fabricId)
+        : await api.installMod(m.slug, game, fabricId);
+      btn.disabled = false;
+      btn.textContent = 'Install';
+      if (res2.ok) {
+        toast(`Installed ${res2.files.length} file(s)`, 'ok');
+        loadModsInstalled();
+      } else {
+        toast(`Install failed: ${res2.error}`, 'error', 6000);
+      }
+    });
+    wrap.appendChild(el);
+  });
+}
+
+$('btn-mods-top').addEventListener('click', showTopMods);
+
+async function loadModsInstalled() {
+  const fabricId = $('mods-instance').value;
+  const wrap = $('mods-installed');
+  if (!fabricId) {
+    wrap.innerHTML = '<p class="muted">No Fabric instance selected.</p>';
+    return;
+  }
+  const files = await api.listMods(fabricId);
+  if (!files.length) {
+    wrap.innerHTML = '<p class="muted">No mods installed in this instance yet.</p>';
+    return;
+  }
+  wrap.innerHTML = '';
+  for (const f of files) {
+    const row = document.createElement('div');
+    row.className = 'account-row';
+    row.innerHTML = `
+      <span class="acc-name">${esc(f.name)}</span>
+      <span class="muted">${humanBytes(f.size)}</span>
+      <button class="btn small danger-soft">Remove</button>`;
+    row.querySelector('button').addEventListener('click', async () => {
+      const res = await api.removeMod(fabricId, f.name);
+      if (res.ok) { toast(`Removed ${f.name}`, 'ok'); loadModsInstalled(); }
+      else toast(res.error || 'Remove failed', 'error');
+    });
+    wrap.appendChild(row);
+  }
+}
+
+$('btn-mods-refresh').addEventListener('click', loadModsInstalled);
+$('mods-instance').addEventListener('change', loadModsInstalled);
+
+// ---------------------------------------------------------------- shaders page
+// Paged shader catalog: 100 per page, "Load more" appends up to the whole
+// catalog (Modrinth ~900+ packs, CurseForge 10k API cap).
+const shaderList = { kind: 'top', query: '', shown: 0, total: 0, busy: false };
+
+function shaderCountLabel() {
+  $('shader-count').textContent = shaderList.total
+    ? `${shaderList.shown} / ${shaderList.total.toLocaleString()} shader packs`
+    : '';
+  $('btn-shader-more').classList.toggle('hidden',
+    !shaderList.total || shaderList.shown >= shaderList.total || shaderList.busy);
+}
+
+async function loadShaders(kind, query, { reset = true } = {}) {
+  if (shaderList.busy) return;
+  shaderList.busy = true;
+  const src = shaderSource();
+  const wrap = $('shader-results');
+  const pageSize = src === 'curseforge' ? 50 : 100;
+  const offset = reset ? 0 : shaderList.shown;
+  if (reset) wrap.innerHTML = '<p class="muted">Loading shader packs...</p>';
+  else $('btn-shader-more').classList.add('hidden');
+
+  const res = kind === 'search'
+    ? await api.searchShaders(query, pageSize, src, offset)
+    : await api.topShaders(pageSize, src, offset);
+  shaderList.busy = false;
+  if (!res.ok) {
+    if (reset) wrap.innerHTML = `<p class="muted">Failed: ${esc(res.error || 'unknown error')}</p>`;
+    return;
+  }
+  if (reset) {
+    wrap.innerHTML = '';
+    shaderList.total = res.total || 0;
+    shaderList.kind = kind;
+    shaderList.query = query || '';
+    shaderList.shown = 0;
+    if (!res.results.length) {
+      wrap.innerHTML = '<p class="muted">No shader packs found.</p>';
+      shaderCountLabel();
+      return;
+    }
+  }
+  const baseRank = offset;
+  res.results.forEach((m, idx) => {
+    const rank = shaderList.kind === 'top' ? baseRank + idx + 1 : 0;
+    const el = document.createElement('div');
+    el.className = 'mod-card';
+    el.innerHTML = `
+      <div class="mod-head">
+        <img class="mod-icon" src="${esc(m.iconUrl)}" onerror="this.style.visibility='hidden'" />
+        <div>
+          <div class="mod-title">${rank ? `#${rank} · ` : ''}${esc(m.title)}</div>
+          <div class="muted mod-desc">${esc(m.description)}</div>
+          <div class="muted mod-meta">by ${esc(m.author)} · ${m.downloads.toLocaleString()} downloads</div>
+        </div>
+      </div>
+      <button class="btn small mod-install">Install</button>`;
+    el.querySelector('.mod-install').addEventListener('click', async (e) => {
+      const btn = e.target;
+      btn.disabled = true;
+      btn.textContent = 'Installing...';
+      $('progress-wrap').classList.remove('hidden');
+      const res2 = await api.installShader(m.slug, sourceOf(m, shaderSource()));
+      btn.disabled = false;
+      btn.textContent = 'Install';
+      if (res2.ok) {
+        toast(`Shader installed: ${res2.file}`, 'ok');
+        loadShaderFiles();
+      } else {
+        toast(`Install failed: ${res2.error}`, 'error', 6000);
+      }
+    });
+    wrap.appendChild(el);
+  });
+  shaderList.shown = offset + res.results.length;
+  shaderCountLabel();
+}
+
+// CurseForge key hint on the shaders page too.
+$('shader-source').addEventListener('change', async () => {
+  const cf = shaderSource() === 'curseforge';
+  const st = cf ? await api.cfStatus() : { hasKey: true };
+  if (cf && !st.hasKey) toast('CurseForge needs an API key — Settings → CurseForge API key', 'error', 6000);
+  loadShaders('top');
+});
+
+async function loadShaderFiles() {
+  const wrap = $('shader-installed');
+  const files = await api.listShaders();
+  if (!files.length) {
+    wrap.innerHTML = '<p class="muted">No shader packs installed yet.</p>';
+    return;
+  }
+  wrap.innerHTML = '';
+  for (const f of files) {
+    const row = document.createElement('div');
+    row.className = 'account-row';
+    row.innerHTML = `
+      <span class="acc-name">${esc(f.name)}</span>
+      <span class="muted">${humanBytes(f.size)}</span>
+      <button class="btn small danger-soft">Remove</button>`;
+    row.querySelector('button').addEventListener('click', async () => {
+      const res = await api.removeShader(f.name);
+      if (res.ok) { toast(`Removed ${f.name}`, 'ok'); loadShaderFiles(); }
+      else toast(res.error || 'Remove failed', 'error');
+    });
+    wrap.appendChild(row);
+  }
+}
+
+$('btn-shader-search').addEventListener('click', () => loadShaders('search', $('shader-search').value.trim()));
+$('shader-search').addEventListener('keydown', (e) => { if (e.key === 'Enter') loadShaders('search', $('shader-search').value.trim()); });
+$('btn-shader-top').addEventListener('click', () => loadShaders('top'));
+$('btn-shader-refresh').addEventListener('click', loadShaderFiles);
+$('btn-shader-more').addEventListener('click', () => loadShaders(shaderList.kind, shaderList.query, { reset: false }));
+
+// ---------------------------------------------------------------- servers page
+async function loadServers() {
+  const servers = await api.listServers();
+  const wrap = $('server-list');
+  wrap.innerHTML = '';
+  if (!servers.length) {
+    wrap.innerHTML = '<p class="muted">No servers saved yet.</p>';
+  } else {
+    for (const s of servers) {
+      const row = document.createElement('div');
+      row.className = 'account-row';
+      row.innerHTML = `
+        <span class="acc-dot msa"></span>
+        <span class="acc-name">${esc(s.name)}</span>
+        <span class="acc-tag">${esc(s.host)}${s.port !== 25565 ? ':' + s.port : ''}</span>
+        <button class="btn small danger-soft">Delete</button>`;
+      row.querySelector('button').addEventListener('click', async () => {
+        await api.removeServer(s.id);
+        loadServers();
+        refreshInstanceSelects();
+      });
+      wrap.appendChild(row);
+    }
+  }
+  refreshInstanceSelects();
+}
+
+$('btn-srv-add').addEventListener('click', async () => {
+  const res = await api.addServer({
+    name: $('srv-name').value,
+    host: $('srv-host').value,
+    port: parseInt($('srv-port').value, 10) || 25565
+  });
+  if (res.ok) {
+    toast(`Server saved: ${res.server.name}`, 'ok');
+    $('srv-name').value = '';
+    $('srv-host').value = '';
+    $('srv-port').value = '';
+    loadServers();
+  } else {
+    toast(res.error || 'Could not save', 'error');
+  }
+});
+
+// ---------------------------------------------------------------- init
+(async function init() {
+  const acc = await api.activeAccount();
+  renderAccount(acc);
+  refreshAccountsPanel();
+  await loadSettings();
+  initBackgroundPanel();
+  await loadVersions();
+  loadAbout();
+  loadVersionsPage();
+  refreshInstanceSelects();
+  loadServers();
+  const running = await api.isRunning();
+  state.running = !!running;
+  setPlayButtons();
+  if (running) setStatus('Minecraft is running.');
+})();
+</script>
+</body>
+</html>

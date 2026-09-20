@@ -1,0 +1,27 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+dist-e2e/
+
+# Runtime data (versions, assets, runtimes, game data, settings, logs)
+appdata/
+
+# Logs & crashes
+*.log
+crash-*.txt
+
+# Environment / secrets
+.env
+.env.local
+
+# OS junk
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor
+.vscode/
+.idea/
+*.swp

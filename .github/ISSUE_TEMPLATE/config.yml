@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Modrinth API docs
+    url: https://docs.modrinth.com
+    about: Catalog source reference
+  - name: Fabric meta docs
+    url: https://fabricmc.net/develop/
+    about: Loader installation reference

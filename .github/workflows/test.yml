@@ -1,0 +1,27 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm install --no-audit --no-fund
+      - name: Syntax check all sources
+        shell: bash
+        run: |
+          for f in src/*.js src/renderer/*.js scripts/*.js test/*.js; do
+            node --check "$f"
+          done
+      - name: Smoke tests
+        run: npm test

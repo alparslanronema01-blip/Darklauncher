@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://minotar.net https://cdn.modrinth.com https://media.forgecdn.net https://mediafilez.forgecdn.net;" />
+  <link rel="stylesheet" href="style.css" />
+  <title>Darklauncher</title>
+</head>
+<body>
+  <canvas id="bg-canvas"></canvas>
+  <div id="app">
+    <!-- Titlebar -->
+    <header id="titlebar">
+      <div class="tb-left">
+        <img class="logo-dot" src="logo-titlebar.png" alt="" draggable="false" />
+        <span class="tb-title">DARK<span class="accent">LAUNCHER</span></span>
+      </div>
+      <div class="tb-right">
+        <button class="tb-btn" id="btn-min" title="Minimize">&#x2013;</button>
+        <button class="tb-btn" id="btn-max" title="Maximize">&#x25A1;</button>
+        <button class="tb-btn tb-close" id="btn-close" title="Close">&#x2715;</button>
+      </div>
+    </header>
+
+    <div id="body">
+      <!-- Sidebar -->
+      <nav id="sidebar">
+        <button class="nav-btn active" data-page="home">
+          <span class="ico">&#127968;</span><span>Home</span>
+        </button>
+        <button class="nav-btn" data-page="console">
+          <span class="ico">&#9654;</span><span>Console</span>
+        </button>
+        <button class="nav-btn" data-page="versions">
+          <span class="ico">&#128230;</span><span>Versions</span>
+        </button>
+        <button class="nav-btn" data-page="mods">
+          <span class="ico">&#129514;</span><span>Mods</span>
+        </button>
+        <button class="nav-btn" data-page="shaders">
+          <span class="ico">&#10024;</span><span>Shaders</span>
+        </button>
+        <button class="nav-btn" data-page="servers">
+          <span class="ico">&#127760;</span><span>Servers</span>
+        </button>
+        <button class="nav-btn" data-page="accounts">
+          <span class="ico">&#128100;</span><span>Accounts</span>
+        </button>
+        <button class="nav-btn" data-page="settings">
+          <span class="ico">&#9881;</span><span>Settings</span>
+        </button>
+        <button class="nav-btn" data-page="about">
+          <span class="ico">&#8505;</span><span>About</span>
+        </button>
+        <div class="sidebar-footer">
+          <div id="account-chip">
+            <img id="account-face" src="https://minotar.net/helm/Steve/32" alt="" />
+            <div class="acc-meta">
+              <span id="account-name">Player</span>
+              <span id="account-type">Offline</span>
+            </div>
+          </div>
+        </div>
+      </nav>
+
+      <!-- Content -->
+      <main id="content">
+        <!-- HOME -->
+        <section class="page active" id="page-home">
+          <div class="home-hero">
+            <h1>Welcome to <span class="accent">Darklauncher</span></h1>
+            <p id="hero-sub">Pick a version and dive into the dark.</p>
+          </div>
+
+          <div class="launch-dock">
+            <div class="launch-dock-main">
+              <div class="profile-version-box">
+                <div class="panel-head" style="padding:0;margin-bottom:6px">
+                  <h4>Version</h4>
+                  <label class="chk muted"><input type="checkbox" id="show-snapshots" /> Snapshots</label>
+                </div>
+                <input id="version-search" type="text" placeholder="Search versions..." />
+                <div id="version-list" class="version-list compact"></div>
+              </div>
+
+              <select id="join-server">
+                <option value="">Singleplayer / server browser</option>
+              </select>
+            </div>
+
+            <div class="launch-dock-actions">
+              <button id="btn-play">PLAY</button>
+              <button id="btn-stop" class="btn danger hidden">&#9632; Stop</button>
+            </div>
+            <div id="progress-wrap" class="hidden">
+              <div class="progress-label" id="progress-label">Preparing...</div>
+              <div class="progress-bar"><div id="progress-fill"></div></div>
+            </div>
+            <div id="play-status">Ready.</div>
+          </div>
+        </section>
+
+        <!-- CONSOLE -->
+        <section class="page" id="page-console">
+          <div class="panel-head">
+            <h3>Console</h3>
+            <div class="row" style="gap:8px">
+              <input id="console-filter" type="text" placeholder="Filter (e.g. ERROR, Exception)..." style="width:260px" />
+              <label class="chk muted"><input type="checkbox" id="console-errors-only" /> Errors only</label>
+              <button class="btn small" id="btn-copy-errors">Copy errors</button>
+              <button class="btn small" id="btn-clear-console">Clear</button>
+            </div>
+          </div>
+          <pre id="console"></pre>
+          <div class="panel" style="margin-top:12px">
+            <div class="panel-head">
+              <h3>Error codes &amp; fixes</h3>
+              <button class="btn small" id="btn-crash-analysis">Analyze last crash</button>
+            </div>
+            <div id="crash-hints" class="muted">Launch the game — common crash codes will be explained here automatically.</div>
+          </div>
+        </section>
+
+        <!-- ACCOUNTS -->
+        <section class="page" id="page-accounts">
+          <h2>Accounts</h2>
+          <div class="account-cards">
+            <div class="panel">
+              <h3>Microsoft Account</h3>
+              <p class="muted">Sign in with your real Minecraft account. A device code flow will open in your browser.</p>
+              <button class="btn" id="btn-msa">Sign in with Microsoft</button>
+              <div id="msa-box" class="hidden">
+                <p>Go to <a href="#" id="msa-uri">microsoft.com/link</a> and enter:</p>
+                <div id="msa-code" class="code-big">------</div>
+                <p class="muted" id="msa-status">Waiting for approval...</p>
+              </div>
+            </div>
+            <div class="panel">
+              <h3>Saved Accounts</h3>
+              <div id="account-list"></div>
+              <button class="btn small" id="btn-signout">Sign out &amp; clear accounts</button>
+            </div>
+            <div class="panel">
+              <h3>Offline Account</h3>
+              <p class="muted">Play without signing in (works for offline servers and singleplayer cracks).</p>
+              <input id="offline-name" type="text" maxlength="16" placeholder="Username" />
+              <button class="btn" id="btn-offline">Use Offline Account</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- SETTINGS -->
+        <section class="page" id="page-settings">
+          <h2>Settings</h2>
+          <div class="settings-grid">
+            <div class="panel">
+              <h3>Memory</h3>
+              <label class="muted" id="mem-label">4096 MB</label>
+              <input type="range" id="set-memory" min="1024" max="16384" step="512" value="4096" />
+            </div>
+            <div class="panel">
+              <h3>Java</h3>
+              <p class="muted">Leave empty to auto-detect.</p>
+              <input id="set-java" type="text" placeholder="Path to javaw.exe / java" />
+            </div>
+            <div class="panel">
+              <h3>CurseForge API key</h3>
+              <p class="muted">Free key from <b>console.curseforge.com</b> enables the CurseForge tab in Mods &amp; Shaders.</p>
+              <input id="set-cfkey" type="password" placeholder="Paste your x-api-key here" />
+            </div>
+            <div class="panel" style="grid-column: 1 / -1">
+              <h3>Animated background</h3>
+              <div class="mods-toolbar">
+                <select id="bg-theme"></select>
+                <button class="btn" id="btn-bg-add-image">Add your image…</button>
+              </div>
+              <p class="muted">“Custom blocks” floats your own images among Minecraft blocks. “Image background” shows a picture behind the UI.</p>
+              <div class="panel-head" style="margin-top:10px"><h4 class="muted">Your images</h4></div>
+              <div id="bg-images"></div>
+            </div>
+            <div class="panel">
+              <h3>Window</h3>
+              <div class="row">
+                <label>Width <input id="set-width" type="number" min="400" max="7680" /></label>
+                <label>Height <input id="set-height" type="number" min="300" max="4320" /></label>
+              </div>
+              <label class="chk"><input type="checkbox" id="set-fullscreen" /> Fullscreen</label>
+              <label class="chk"><input type="checkbox" id="set-keepopen" /> Keep launcher open</label>
+              <label class="chk"><input type="checkbox" id="set-closetotray" /> Close button minimizes to tray</label>
+            </div>
+          </div>
+          <div class="settings-actions">
+            <button class="btn" id="btn-save-settings">Save Settings</button>
+            <button class="btn small" id="btn-open-folder">Open game folder</button>
+          </div>
+        </section>
+
+        <!-- VERSIONS (management) -->
+        <section class="page" id="page-versions">
+          <h2>Installed Versions</h2>
+          <div class="panel-head">
+            <p class="muted">Disk usage, last played and cleanup for every installed version.</p>
+            <button class="btn small" id="btn-refresh-versions">Refresh</button>
+          </div>
+          <div class="panel" style="margin-bottom:16px">
+            <h3>Install Fabric</h3>
+            <div class="mods-toolbar">
+              <select id="fabric-game"></select>
+              <input id="fabric-loader" type="text" placeholder="Loader version (empty = latest)" />
+              <button class="btn" id="btn-fabric-install">Install Fabric</button>
+            </div>
+            <p class="muted">Creates a moddable Fabric instance of the given version. It then appears in the version list and in the Mods page.</p>
+          </div>
+          <div id="versions-table" class="versions-table"></div>
+        </section>
+
+        <!-- MODS -->
+        <section class="page" id="page-mods">
+          <h2>Mods</h2>
+          <div class="panel-head">
+            <p class="muted">Browse Modrinth and install into a Fabric instance. Install Fabric first!</p>
+          </div>
+          <div class="panel">
+            <div class="mods-toolbar">
+              <select id="mods-source" title="Catalog source">
+                <option value="modrinth">Modrinth</option>
+                <option value="curseforge">CurseForge</option>
+              </select>
+              <select id="mods-instance"></select>
+              <input id="mods-search" type="text" placeholder="Search mods..." />
+              <button class="btn" id="btn-mods-search">Search</button>
+              <button class="btn accent" id="btn-mods-top" title="Most downloaded client mods">Top</button>
+            </div>
+            <p class="muted hidden" id="cf-hint">CurseForge needs a free developer API key. Get one at <b>console.curseforge.com</b> and paste it in Settings → CurseForge API key.</p>
+          </div>
+          <div id="mods-results" class="mods-grid"></div>
+          <div class="load-more-wrap">
+            <button class="btn" id="btn-mods-more">Load more</button>
+            <span class="muted" id="mods-count"></span>
+          </div>
+          <div class="panel" style="margin-top:16px">
+            <div class="panel-head">
+              <h3>Installed mods</h3>
+              <button class="btn small" id="btn-mods-refresh">Refresh</button>
+            </div>
+            <div id="mods-installed"></div>
+          </div>
+        </section>
+
+        <!-- SHADERS -->
+        <section class="page" id="page-shaders">
+          <h2>Shaders</h2>
+          <div class="panel-head">
+            <p class="muted">Shader packs install into the shared shaderpacks folder. Install the <b>Iris</b> mod on a Fabric instance to use them, then pick the pack in-game (Options → Video Settings → Shader Packs).</p>
+          </div>
+          <div class="panel">
+            <div class="mods-toolbar">
+              <select id="shader-source" title="Catalog source">
+                <option value="modrinth">Modrinth</option>
+                <option value="curseforge">CurseForge</option>
+              </select>
+              <input id="shader-search" type="text" placeholder="Search shader packs..." />
+              <button class="btn" id="btn-shader-search">Search</button>
+              <button class="btn accent" id="btn-shader-top">Most downloaded</button>
+            </div>
+          </div>
+          <div id="shader-results" class="mods-grid"></div>
+          <div class="load-more-wrap">
+            <button class="btn hidden" id="btn-shader-more">Load more</button>
+            <span class="muted" id="shader-count"></span>
+          </div>
+          <div class="panel" style="margin-top:16px">
+            <div class="panel-head">
+              <h3>Installed shader packs</h3>
+              <button class="btn small" id="btn-shader-refresh">Refresh</button>
+            </div>
+            <div id="shader-installed"></div>
+          </div>
+        </section>
+
+        <!-- SERVERS -->
+        <section class="page" id="page-servers">
+          <h2>Servers</h2>
+          <div class="panel-head">
+            <p class="muted">Save servers and join them with one click from the play screen.</p>
+          </div>
+          <div class="account-cards">
+            <div class="panel">
+              <h3>Add Server</h3>
+              <input id="srv-name" type="text" maxlength="64" placeholder="Name (e.g. Hypixel)" />
+              <input id="srv-host" type="text" placeholder="Address (mc.hypixel.net)" />
+              <input id="srv-port" type="number" min="1" max="65535" placeholder="Port (25565)" />
+              <button class="btn" id="btn-srv-add">Save Server</button>
+            </div>
+            <div class="panel">
+              <h3>Saved Servers</h3>
+              <div id="server-list"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ABOUT -->
+        <section class="page" id="page-about">
+          <h2>About</h2>
+          <div class="settings-grid">
+            <div class="panel">
+              <h3 id="about-version">Darklauncher</h3>
+              <p class="muted" id="about-detail">Electron-based Minecraft launcher</p>
+              <p class="muted">Real launcher logic: Mojang manifest, sha1-verified downloads, natives
+              extraction, Microsoft device-code login. No wrappers, no bloat.</p>
+            </div>
+            <div class="panel">
+              <h3>Diagnostics</h3>
+              <p class="muted">Data folder:</p>
+              <p class="mono-sm" id="about-datadir">—</p>
+              <p class="muted">Log file:</p>
+              <p class="mono-sm" id="about-logfile">—</p>
+              <button class="btn small" id="btn-open-logs">Open log folder</button>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <!-- Toast notifications -->
+  <div id="toasts"></div>
+
+  <script src="backgrounds.js"></script>
+  <script src="renderer.js"></script>
+</body>
+</html>
