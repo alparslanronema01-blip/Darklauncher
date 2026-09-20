@@ -9,7 +9,7 @@ const path = require('path');
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'darklauncher-test-'));
 const root = path.join(tmp, 'app');
 fs.mkdirSync(path.join(root, 'src'), { recursive: true });
-for (const f of ['store.js', 'versions.js', 'launcher.js', 'java.js', 'util.js', 'logger.js', 'fabric.js', 'modrinth.js', 'instances.js']) {
+for (const f of ['store.js', 'versions.js', 'launcher.js', 'java.js', 'util.js', 'logger.js', 'fabric.js', 'modrinth.js', 'instances.js', 'shortcut.js']) {
   fs.copyFileSync(path.join(__dirname, '..', 'src', f), path.join(root, 'src', f));
 }
 
@@ -298,4 +298,57 @@ function runLegacyTests() {
     ok = false;
   }
   check('legacy library resolved into classpath', ok);
+}
+
+// ---- desktop shortcut self-repair logic
+{
+  const shortcut = require(path.join(root, 'src', 'shortcut.js'));
+  const fakeBat = 'C:\\Apps\\Darklauncher\\Darklauncher.bat';
+  const fakeIco = 'C:\\Apps\\Darklauncher\\build\\darklauncher-icon.ico';
+
+  // Build a real .lnk via the same PowerShell path the app uses, then verify
+  // the parser round-trips it. Skipped silently on non-Windows CI.
+  if (process.platform === 'win32') {
+    const tmpLnkDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dlk-lnk-'));
+    const lnkPath = path.join(tmpLnkDir, 'Darklauncher.lnk');
+    // The target must EXIST: Windows only writes LocalBasePath for
+    // resolvable targets (exactly why iconless real shortcuts still parse).
+    const realBat = path.join(tmpLnkDir, 'Darklauncher.bat');
+    fs.writeFileSync(realBat, '@echo off\r\n');
+    const otherBat = path.join(tmpLnkDir, 'Other.bat');
+    fs.writeFileSync(otherBat, '@echo off\r\n');
+    const script = shortcut.buildShortcutPsScript(realBat, fakeIco).replace(
+      /(\$desktop = \[Environment\]::GetFolderPath\('Desktop'\))/,
+      "$1\r\n$desktop = '" + tmpLnkDir.replace(/'/g, "''") + "'"
+    );
+    const { spawnSync } = require('child_process');
+    const b64 = Buffer.from(script, 'utf16le').toString('base64');
+    const r = spawnSync('powershell', ['-NoProfile', '-EncodedCommand', b64], { timeout: 20000 });
+    if (r.status === 0 && fs.existsSync(lnkPath)) {
+      const buf = fs.readFileSync(lnkPath);
+      const parsed = shortcut.parseLinkStrings(buf);
+      const eq = (a, b) => String(a || '').toLowerCase() === String(b || '').toLowerCase() || shortcut.sameFile(a, b);
+      check('lnk round-trip: target parsed', parsed && eq(parsed.localBasePath, realBat));
+      check('lnk round-trip: icon parsed', !!(parsed && parsed.iconLocation && parsed.iconLocation.startsWith(fakeIco)));
+      check('healthy lnk needs no repair', shortcut.shortcutNeedsRepair(buf, realBat, fakeIco) === null);
+      check('wrong icon detected', shortcut.shortcutNeedsRepair(buf, realBat, 'C:\\other\\x.ico') === 'icon');
+      check('wrong target detected', shortcut.shortcutNeedsRepair(buf, otherBat, fakeIco) === 'target');
+    } else {
+      console.log('  (skip) could not create test .lnk via PowerShell');
+    }
+    try { fs.rmSync(tmpLnkDir, { recursive: true, force: true }); } catch (_) {}
+  }
+
+  // Garbage input must read as "needs repair", never throw.
+  check('garbage buffer -> unreadable', shortcut.shortcutNeedsRepair(Buffer.from([1, 2, 3]), fakeBat, fakeIco) === 'unreadable');
+  check('empty buffer -> unreadable', shortcut.shortcutNeedsRepair(Buffer.alloc(0), fakeBat, fakeIco) === 'unreadable');
+
+  // PS command must be encoded (no raw quoting pitfalls).
+  const cmd = shortcut.buildShortcutCommand(fakeBat, fakeIco);
+  check('ps command uses EncodedCommand', cmd[1] === '-NoProfile' && cmd[2] === '-EncodedCommand' && typeof cmd[3] === 'string' && cmd[3].length > 40);
+  check('ps script carries icon path', shortcut.buildShortcutPsScript(fakeBat, fakeIco).includes('darklauncher-icon.ico'));
+
+  // Non-Windows must be a clean no-op.
+  const nop = shortcut.ensureDesktopShortcut({ isWindows: false });
+  check('non-windows no-op', nop.skipped === true && nop.reason === 'not-windows');
 }

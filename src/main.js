@@ -23,6 +23,7 @@ const fabric = require('./fabric');
 const modrinth = require('./modrinth');
 const curseforge = require('./curseforge');
 const instances = require('./instances');
+const shortcut = require('./shortcut');
 
 // In packaged builds, keep game data in the OS user-data dir; portable in dev.
 if (app.isPackaged) {
@@ -169,6 +170,18 @@ app.on('second-instance', () => {
 app.whenReady().then(() => {
   createWindow();
   createTray();
+  // Self-repair the desktop shortcut in the background: installations shared
+  // via GitHub (zip copy / clone) otherwise start with an iconless shortcut.
+  setImmediate(() => {
+    try {
+      const r = shortcut.ensureDesktopShortcut();
+      if (r.created) log.info('desktop shortcut created');
+      else if (r.repaired) log.info('desktop shortcut repaired (icon/target fixed)');
+      else if (r.error) log.warn(`shortcut fix failed: ${r.error}`);
+    } catch (e) {
+      log.warn(`shortcut fix failed: ${e.message}`);
+    }
+  });
 });
 
 app.on('activate', () => {

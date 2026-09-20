@@ -16,6 +16,9 @@ crash-*.txt
 .env
 .env.local
 
+# Local build artifacts
+Darklauncher.exe
+
 # OS junk
 .DS_Store
 Thumbs.db
